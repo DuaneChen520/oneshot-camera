@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -291,18 +292,14 @@ fun ProHud(
                     onToggleAutoShutter(true)
                     hapticManager.shutterClick()
                 },
-                onSwipeDelta = { deltaX, initialHoldValue ->
-                    // 每移动 18px 切换 1 档快门
-                    val stepPx = 18f
-                    val stepsOffset = (deltaX / stepPx).toInt()
-                    val targetIdx = (initialHoldValue + stepsOffset).coerceIn(0, ALL_STANDARD_SHUTTER_SPEEDS.lastIndex)
-                    if (targetIdx != currentShutterIdx) {
+                onStep = { steps ->
+                    val next = (currentShutterIdx + steps).coerceIn(0, ALL_STANDARD_SHUTTER_SPEEDS.lastIndex)
+                    if (next != currentShutterIdx) {
                         onToggleAutoShutter(false)
-                        onShutterSpeedChange(ALL_STANDARD_SHUTTER_SPEEDS[targetIdx].first)
+                        onShutterSpeedChange(ALL_STANDARD_SHUTTER_SPEEDS[next].first)
                         hapticManager.tick()
                     }
                 },
-                getInitialHoldInt = { currentShutterIdx },
                 modifier = Modifier.weight(1f)
             )
 
@@ -325,17 +322,14 @@ fun ProHud(
                     onToggleAutoIso(true)
                     hapticManager.shutterClick()
                 },
-                onSwipeDelta = { deltaX, initialHoldValue ->
-                    val stepPx = 18f
-                    val stepsOffset = (deltaX / stepPx).toInt()
-                    val targetIdx = (initialHoldValue + stepsOffset).coerceIn(0, ALL_STANDARD_ISOS.lastIndex)
-                    if (targetIdx != currentIsoIdx) {
+                onStep = { steps ->
+                    val next = (currentIsoIdx + steps).coerceIn(0, ALL_STANDARD_ISOS.lastIndex)
+                    if (next != currentIsoIdx) {
                         onToggleAutoIso(false)
-                        onIsoChange(ALL_STANDARD_ISOS[targetIdx])
+                        onIsoChange(ALL_STANDARD_ISOS[next])
                         hapticManager.tick()
                     }
                 },
-                getInitialHoldInt = { currentIsoIdx },
                 modifier = Modifier.weight(1f)
             )
 
@@ -357,24 +351,20 @@ fun ProHud(
                     onEvChange(0)
                     hapticManager.shutterClick()
                 },
-                onSwipeDelta = { deltaX, initialHoldValue ->
-                    // 每移动 16px 连续切换 1 档 EV（支持从 -4.0 到 +4.0 连续跨越多档）
-                    val stepPx = 16f
-                    val stepsOffset = (deltaX / stepPx).toInt()
-                    val targetIdx = (initialHoldValue + stepsOffset).coerceIn(exposureRange.first, exposureRange.last)
-                    if (targetIdx != currentEvIndex) {
-                        onEvChange(targetIdx)
+                onStep = { steps ->
+                    val next = (currentEvIndex + steps).coerceIn(exposureRange.first, exposureRange.last)
+                    if (next != currentEvIndex) {
+                        onEvChange(next)
                         hapticManager.tick()
                     }
                 },
-                getInitialHoldInt = { currentEvIndex },
                 modifier = Modifier.weight(1f)
             )
 
             Spacer(modifier = Modifier.width(3.dp))
 
             // Pill 4: 焦距 (Zoom) —— 居中突出核心 (Prominent Center)
-            // 真正全范围平滑连续变焦 (从 0.7x 到长焦 120x)
+            // 真正全范围平滑连续变焦 (从 0.7x 到长焦 120x，基于当前真实倍率零跳变)
             InPlaceDynamicZoomPill(
                 currentZoom = currentZoom,
                 zoomRange = zoomRange,
@@ -418,17 +408,14 @@ fun ProHud(
                     onToggleAutoFocus(true)
                     hapticManager.shutterClick()
                 },
-                onSwipeDelta = { deltaX, initialHoldValue ->
-                    val stepPx = 18f
-                    val stepsOffset = (deltaX / stepPx).toInt()
-                    val targetIdx = (initialHoldValue + stepsOffset).coerceIn(0, ALL_STANDARD_FOCUS_DISTANCES.lastIndex)
-                    if (targetIdx != currentFocusIdx) {
+                onStep = { steps ->
+                    val next = (currentFocusIdx + steps).coerceIn(0, ALL_STANDARD_FOCUS_DISTANCES.lastIndex)
+                    if (next != currentFocusIdx) {
                         onToggleAutoFocus(false)
-                        onFocusDistanceChange(ALL_STANDARD_FOCUS_DISTANCES[targetIdx].first)
+                        onFocusDistanceChange(ALL_STANDARD_FOCUS_DISTANCES[next].first)
                         hapticManager.tick()
                     }
                 },
-                getInitialHoldInt = { currentFocusIdx },
                 modifier = Modifier.weight(1f)
             )
 
@@ -449,18 +436,14 @@ fun ProHud(
                     onToggleAutoWb(true)
                     hapticManager.shutterClick()
                 },
-                onSwipeDelta = { deltaX, initialHoldValue ->
-                    // 每移动 12px 增减 100K
-                    val stepPx = 12f
-                    val kelvinOffset = ((deltaX / stepPx).toInt()) * 100
-                    val targetCct = (initialHoldValue + kelvinOffset).coerceIn(2800, 8000)
+                onStep = { steps ->
+                    val targetCct = (settings.cctKelvin + steps * 100).coerceIn(2800, 8000)
                     if (targetCct != settings.cctKelvin) {
                         onToggleAutoWb(false)
                         onCctChange(targetCct)
                         hapticManager.tick()
                     }
                 },
-                getInitialHoldInt = { settings.cctKelvin },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -494,11 +477,14 @@ private fun InPlaceDynamicPill(
     isSelected: Boolean,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
-    onSwipeDelta: (deltaX: Float, initialHoldInt: Int) -> Unit,
-    getInitialHoldInt: () -> Int,
+    onStep: (stepDelta: Int) -> Unit,
     modifier: Modifier = Modifier,
     isNeutral: Boolean = false,
 ) {
+    val onTapState by rememberUpdatedState(onTap)
+    val onLongPressState by rememberUpdatedState(onLongPress)
+    val onStepState by rememberUpdatedState(onStep)
+
     val borderColor = when {
         isSelected -> OneShotTheme.AmberGrain
         else -> OneShotTheme.TitaniumBorder.copy(alpha = 0.4f)
@@ -529,7 +515,8 @@ private fun InPlaceDynamicPill(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val startX = down.position.x
-                    val initialVal = getInitialHoldInt()
+                    var lastX = startX
+                    var accumulatedPx = 0f
                     var isDrag = false
                     var isLongPressFired = false
                     val startTime = System.currentTimeMillis()
@@ -540,26 +527,38 @@ private fun InPlaceDynamicPill(
 
                         if (!change.pressed) {
                             if (!isDrag && !isLongPressFired) {
-                                onTap()
+                                onTapState()
                             }
                             break
                         }
 
                         val elapsed = System.currentTimeMillis() - startTime
-                        val totalDrag = change.position.x - startX
+                        val totalMovement = change.position.x - startX
 
-                        if (!isDrag && !isLongPressFired && elapsed >= 400L && abs(totalDrag) < 10f) {
+                        if (!isDrag && !isLongPressFired && elapsed >= 400L && abs(totalMovement) < 10f) {
                             isLongPressFired = true
-                            onLongPress()
+                            onLongPressState()
                         }
 
-                        if (abs(totalDrag) > 10f) {
+                        if (abs(totalMovement) > 8f) {
                             isDrag = true
                         }
 
                         if (isDrag) {
                             change.consume()
-                            onSwipeDelta(totalDrag, initialVal)
+                            val deltaX = change.position.x - lastX
+                            lastX = change.position.x
+                            accumulatedPx += deltaX
+
+                            val stepThreshold = 16f
+                            while (accumulatedPx >= stepThreshold) {
+                                onStepState(1)
+                                accumulatedPx -= stepThreshold
+                            }
+                            while (accumulatedPx <= -stepThreshold) {
+                                onStepState(-1)
+                                accumulatedPx += stepThreshold
+                            }
                         }
                     }
                 }
@@ -605,8 +604,8 @@ private fun InPlaceDynamicPill(
 }
 
 /**
- * True smooth continuous zoom pill.
- * Maps horizontal drag seamlessly from 0.7x up to 120x periscope telephoto.
+ * True smooth continuous zoom pill with Zero-Jump Guarantee.
+ * Always scales starting from the current real zoom value.
  */
 @Composable
 private fun InPlaceDynamicZoomPill(
@@ -619,6 +618,12 @@ private fun InPlaceDynamicZoomPill(
     hapticManager: HapticManager,
     modifier: Modifier = Modifier,
 ) {
+    val currentZoomState by rememberUpdatedState(currentZoom)
+    val zoomRangeState by rememberUpdatedState(zoomRange)
+    val onTapState by rememberUpdatedState(onTap)
+    val onLongPressState by rememberUpdatedState(onLongPress)
+    val onZoomChangeState by rememberUpdatedState(onZoomChange)
+
     val borderColor = if (isSelected) OneShotTheme.AmberGrain else OneShotTheme.TitaniumBorder.copy(alpha = 0.9f)
     val backgroundColor = if (isSelected) OneShotTheme.ChassisCard.copy(alpha = 0.9f) else OneShotTheme.ChassisCard
     val valueColor = if (currentZoom == 1.0f) OneShotTheme.FilmSilver else OneShotTheme.AmberGrain
@@ -633,14 +638,15 @@ private fun InPlaceDynamicZoomPill(
                 shape = RoundedCornerShape(6.dp)
             )
             .padding(vertical = 4.dp, horizontal = 2.dp)
-            .pointerInput(zoomRange) {
+            .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val startX = down.position.x
-                    val initialZoom = currentZoom
+                    var lastX = startX
+                    var activeZoom = currentZoomState
                     var isDrag = false
                     var isLongPressFired = false
-                    var lastTickZoom = initialZoom
+                    var lastTickZoom = activeZoom
                     val startTime = System.currentTimeMillis()
 
                     while (true) {
@@ -649,39 +655,43 @@ private fun InPlaceDynamicZoomPill(
 
                         if (!change.pressed) {
                             if (!isDrag && !isLongPressFired) {
-                                onTap()
+                                onTapState()
                             }
                             break
                         }
 
                         val elapsed = System.currentTimeMillis() - startTime
-                        val totalDrag = change.position.x - startX
+                        val totalMovement = change.position.x - startX
 
-                        if (!isDrag && !isLongPressFired && elapsed >= 400L && abs(totalDrag) < 10f) {
+                        if (!isDrag && !isLongPressFired && elapsed >= 400L && abs(totalMovement) < 10f) {
                             isLongPressFired = true
-                            onLongPress()
+                            onLongPressState()
                         }
 
-                        if (abs(totalDrag) > 8f) {
+                        if (abs(totalMovement) > 8f) {
                             isDrag = true
                         }
 
                         if (isDrag) {
                             change.consume()
-                            // Professional logarithmic lens mapping: fine control at low zoom, smooth rapid scaling at high zoom
-                            val factor = if (totalDrag >= 0) {
-                                1.0f + (totalDrag / 140f) * (1.0f + totalDrag / 240f)
-                            } else {
-                                1.0f / (1.0f + (-totalDrag / 140f))
-                            }
-                            val targetZoom = (initialZoom * factor).coerceIn(zoomRange.start, zoomRange.endInclusive)
-                            val rounded = (targetZoom * 10f).roundToInt() / 10f
+                            val deltaX = change.position.x - lastX
+                            lastX = change.position.x
 
-                            onZoomChange(rounded)
+                            if (abs(deltaX) > 0.05f) {
+                                val zoomDelta = if (activeZoom < 3.0f) {
+                                    deltaX * (0.1f / 14f)
+                                } else {
+                                    activeZoom * (deltaX / 280f)
+                                }
+                                activeZoom = (activeZoom + zoomDelta).coerceIn(zoomRangeState.start, zoomRangeState.endInclusive)
+                                val rounded = (activeZoom * 10f).roundToInt() / 10f
 
-                            if (abs(rounded - lastTickZoom) >= 0.5f) {
-                                hapticManager.tick()
-                                lastTickZoom = rounded
+                                onZoomChangeState(rounded)
+
+                                if (abs(rounded - lastTickZoom) >= 0.5f) {
+                                    hapticManager.tick()
+                                    lastTickZoom = rounded
+                                }
                             }
                         }
                     }
