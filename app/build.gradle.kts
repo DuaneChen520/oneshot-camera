@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -17,6 +19,46 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        create("release") {
+            val keystorePropertiesFile = rootProject.file("keystore.properties")
+            val appKeystorePropsFile = project.file("keystore.properties")
+            val props = Properties()
+            val propFile = when {
+                appKeystorePropsFile.exists() -> appKeystorePropsFile
+                keystorePropertiesFile.exists() -> keystorePropertiesFile
+                else -> null
+            }
+            if (propFile != null) {
+                propFile.inputStream().use { props.load(it) }
+            }
+
+            val storeFilePath = System.getenv("ONESHOT_KEYSTORE_PATH")
+                ?: props.getProperty("storeFile", "oneshot-release.jks")
+            val resolvedStoreFile = if (File(storeFilePath).isAbsolute) {
+                File(storeFilePath)
+            } else {
+                project.file(storeFilePath)
+            }
+
+            if (resolvedStoreFile.exists()) {
+                storeFile = resolvedStoreFile
+                storePassword = System.getenv("ONESHOT_KEYSTORE_PASSWORD")
+                    ?: props.getProperty("storePassword", "oneshot2026")
+                keyAlias = System.getenv("ONESHOT_KEY_ALIAS")
+                    ?: props.getProperty("keyAlias", "oneshot_release")
+                keyPassword = System.getenv("ONESHOT_KEY_PASSWORD")
+                    ?: props.getProperty("keyPassword", "oneshot2026")
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = true
+            } else {
+                initWith(signingConfigs.getByName("debug"))
+            }
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
@@ -24,13 +66,13 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         create("benchmark") {
             initWith(buildTypes.getByName("release"))
             matchingFallbacks += listOf("release")
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             isDebuggable = false
         }
     }

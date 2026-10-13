@@ -13,3 +13,8 @@ tools/gradle-dist/
 
 # Captured device artifacts land here deliberately, but raw logs are noisy
 docs/probe/*.log
+
+# Release Signing keys & credentials
+keystore.properties
+app/keystore.properties
+*.private.jks
