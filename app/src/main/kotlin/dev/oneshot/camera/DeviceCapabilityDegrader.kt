@@ -52,10 +52,30 @@ class DeviceCapabilityDegrader(private val context: Context? = null) {
             ?: return fallbackDefaultCapabilities()
 
         // 1. Qualcomm DCG HDR Hardware vendor tag (0x8003) check
-        val isDcgSupported = characteristics.keys.any { key ->
-            key.name.contains("EnableHDRDCGMode", ignoreCase = true) ||
-            key.name.contains("org.codeaurora.qcamera3", ignoreCase = true)
+        val isQualcommSoc = runCatching {
+            Build.HARDWARE.contains("qcom", ignoreCase = true) ||
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && Build.SOC_MANUFACTURER.contains("QTI", ignoreCase = true)) ||
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && Build.SOC_MANUFACTURER.contains("Qualcomm", ignoreCase = true))
+        }.getOrDefault(false)
+
+        val sessionKeyNames: List<String> = runCatching {
+            characteristics.availableSessionKeys?.map { it.name }
+        }.getOrNull() ?: emptyList()
+
+        val requestKeyNames: List<String> = runCatching {
+            characteristics.availableCaptureRequestKeys?.map { it.name }
+        }.getOrNull() ?: emptyList()
+
+        val charKeyNames: List<String> = runCatching {
+            characteristics.keys.map { it.name }
+        }.getOrNull() ?: emptyList()
+
+        val hasDcgVendorTag = (sessionKeyNames + requestKeyNames + charKeyNames).any { name ->
+            name.contains("EnableHDRDCGMode", ignoreCase = true) ||
+            name.contains("org.codeaurora.qcamera3", ignoreCase = true)
         }
+
+        val isDcgSupported = (hasDcgVendorTag || isQualcommSoc) && lensFacing == LensFacingMode.BACK
 
         // 2. 10-bit HLG10 HDR Profile check (API 33+)
         val isHlg10Supported = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
