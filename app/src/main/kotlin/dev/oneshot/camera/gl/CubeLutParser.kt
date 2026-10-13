@@ -13,14 +13,20 @@ data class Lut3dData(
     val buffer: ByteBuffer,
 )
 
+data class ParsedCubeLut(
+    val title: String?,
+    val lutData: Lut3dData,
+)
+
 object CubeLutParser {
 
     /**
-     * Parses standard .cube file into 3D RGB ByteBuffer.
+     * Parses standard .cube file with metadata (title, size) into 3D RGB ByteBuffer.
      */
-    fun parse(inputStream: InputStream): Lut3dData {
+    fun parseWithMetadata(inputStream: InputStream): ParsedCubeLut {
         val reader = BufferedReader(InputStreamReader(inputStream))
         var lutSize = 0
+        var title: String? = null
         val entries = mutableListOf<FloatArray>()
 
         reader.useLines { lines ->
@@ -28,36 +34,55 @@ object CubeLutParser {
                 val line = rawLine.trim()
                 if (line.isEmpty() || line.startsWith("#")) continue
 
-                if (line.startsWith("LUT_3D_SIZE")) {
+                if (line.startsWith("TITLE", ignoreCase = true)) {
+                    val rawTitle = line.substring(5).trim()
+                    title = rawTitle.removeSurrounding("\"").trim()
+                    continue
+                }
+
+                if (line.startsWith("LUT_3D_SIZE", ignoreCase = true)) {
                     val parts = line.split("\\s+".toRegex())
                     if (parts.size >= 2) {
-                        lutSize = parts[1].toInt()
+                        lutSize = parts[1].toIntOrNull() ?: 0
                     }
                     continue
                 }
 
-                if (line.startsWith("DOMAIN_MIN") || line.startsWith("DOMAIN_MAX") || line.startsWith("TITLE")) {
+                if (line.startsWith("DOMAIN_MIN", ignoreCase = true) ||
+                    line.startsWith("DOMAIN_MAX", ignoreCase = true) ||
+                    line.startsWith("LUT_1D_SIZE", ignoreCase = true)) {
                     continue
                 }
 
                 val tokens = line.split("\\s+".toRegex())
                 if (tokens.size >= 3) {
-                    val r = tokens[0].toFloatOrNull() ?: 0f
-                    val g = tokens[1].toFloatOrNull() ?: 0f
-                    val b = tokens[2].toFloatOrNull() ?: 0f
-                    entries.add(floatArrayOf(r, g, b))
+                    val r = tokens[0].toFloatOrNull()
+                    val g = tokens[1].toFloatOrNull()
+                    val b = tokens[2].toFloatOrNull()
+                    if (r != null && g != null && b != null) {
+                        entries.add(floatArrayOf(r, g, b))
+                    }
                 }
             }
         }
 
         if (lutSize == 0) {
-            lutSize = Math.round(Math.cbrt(entries.size.toDouble())).toInt()
+            val total = entries.size
+            if (total > 0) {
+                lutSize = Math.round(Math.cbrt(total.toDouble())).toInt()
+            }
         }
 
-        val byteBuffer = ByteBuffer.allocateDirect(lutSize * lutSize * lutSize * 3)
+        require(lutSize > 0 && entries.size >= lutSize * lutSize * lutSize) {
+            "无效的 .cube 文件：无法解析 3D 查找表尺寸或数据点不足 (解析到 ${entries.size} 点，需要 ${lutSize * lutSize * lutSize} 点)"
+        }
+
+        val totalPoints = lutSize * lutSize * lutSize
+        val byteBuffer = ByteBuffer.allocateDirect(totalPoints * 3)
             .order(ByteOrder.nativeOrder())
 
-        for (rgb in entries) {
+        for (i in 0 until totalPoints) {
+            val rgb = entries[i]
             val rByte = (rgb[0].coerceIn(0f, 1f) * 255f).toInt().toByte()
             val gByte = (rgb[1].coerceIn(0f, 1f) * 255f).toInt().toByte()
             val bByte = (rgb[2].coerceIn(0f, 1f) * 255f).toInt().toByte()
@@ -66,8 +91,16 @@ object CubeLutParser {
             byteBuffer.put(bByte)
         }
         byteBuffer.rewind()
-        return Lut3dData(size = lutSize, buffer = byteBuffer)
+        return ParsedCubeLut(
+            title = title,
+            lutData = Lut3dData(size = lutSize, buffer = byteBuffer)
+        )
     }
+
+    /**
+     * Parses standard .cube file into 3D RGB ByteBuffer.
+     */
+    fun parse(inputStream: InputStream): Lut3dData = parseWithMetadata(inputStream).lutData
 
     /**
      * Generates a built-in Hollywood Teal & Orange 3D LUT (size 17x17x17)

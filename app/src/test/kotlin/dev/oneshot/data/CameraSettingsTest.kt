@@ -29,9 +29,25 @@ class CameraSettingsTest {
         assertEquals(ColorSpacePreset.REC_2020, settings.colorSpace)
         assertFalse(settings.lutEnabled)
         assertEquals(LutPreset.TEAL_AND_ORANGE, settings.lutPreset)
+        assertEquals(null, settings.selectedCustomLutId)
+        assertTrue(settings.customLuts.isEmpty())
         assertFalse(settings.lutBurnIn)
         assertFalse(settings.focusPeakingEnabled)
         assertFalse(settings.zebraPatternEnabled)
+    }
+
+    @Test
+    fun testCustomLutSerialization() {
+        val original = CustomLut(
+            id = "lut_12345",
+            name = "Fujifilm Superia 400",
+            fileName = "lut_12345.cube",
+            size = 33,
+            importedAtMs = 1718000000000L
+        )
+        val json = kotlinx.serialization.json.Json.encodeToString(CustomLut.serializer(), original)
+        val decoded = kotlinx.serialization.json.Json.decodeFromString(CustomLut.serializer(), json)
+        assertEquals(original, decoded)
     }
 
     @Test

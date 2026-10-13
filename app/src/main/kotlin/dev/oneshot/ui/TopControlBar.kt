@@ -83,10 +83,16 @@ fun TopControlBar(
 
             // Current Film Stock Roll Badge (Clickable shortcut to switch LUT)
             val filmStockLabel = if (settings.lutEnabled) {
-                when (settings.lutPreset) {
-                    LutPreset.KODAK_PORTRA -> "FILM: PORTRA 400"
-                    LutPreset.TEAL_AND_ORANGE -> "FILM: CINE 250"
-                    LutPreset.FLAT_LOG -> "FILM: CINELOG"
+                if (settings.selectedCustomLutId != null) {
+                    val custom = settings.customLuts.find { it.id == settings.selectedCustomLutId }
+                    val name = custom?.name ?: "CUSTOM"
+                    "FILM: ${name.take(14).uppercase()}"
+                } else {
+                    when (settings.lutPreset) {
+                        LutPreset.KODAK_PORTRA -> "FILM: PORTRA 400"
+                        LutPreset.TEAL_AND_ORANGE -> "FILM: CINE 250"
+                        LutPreset.FLAT_LOG -> "FILM: CINELOG"
+                    }
                 }
             } else {
                 "FILM: DIRECT OPTICS"

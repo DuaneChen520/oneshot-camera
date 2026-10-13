@@ -39,6 +39,7 @@ import androidx.camera.video.VideoCapture
 import androidx.camera.video.VideoRecordEvent
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
+import dev.oneshot.camera.gl.CustomLutManager
 import dev.oneshot.camera.gl.OneshotCameraEffect
 import dev.oneshot.camera.gl.OneshotGlProcessor
 import dev.oneshot.data.AspectRatioMode
@@ -70,6 +71,7 @@ class CameraController(
     private val context: Context,
     private val parameterStore: ParameterStore,
     private val hapticManager: HapticManager,
+    val customLutManager: CustomLutManager = CustomLutManager(context),
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val mainExecutor: Executor = ContextCompat.getMainExecutor(context)
@@ -228,7 +230,7 @@ class CameraController(
         // Bind use cases to lifecycle with graceful fallback
         val hasEffect = effectiveSettings.lutEnabled || effectiveSettings.focusPeakingEnabled || effectiveSettings.zebraPatternEnabled
         if (hasEffect) {
-            val processor = glProcessor ?: OneshotGlProcessor().also { glProcessor = it }
+            val processor = glProcessor ?: OneshotGlProcessor(customLutManager).also { glProcessor = it }
             processor.updateSettings(effectiveSettings)
 
             val targets = if (effectiveSettings.lutBurnIn) {

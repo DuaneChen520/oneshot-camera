@@ -191,6 +191,11 @@ flowchart TD
     - 配置正式 `signingConfigs.release`，支持 V1/V2/V3/V4 多协议防篡改签名。
     - 生成并绑定 `CN=OneShot Film, OU=Optics Lab` 生产密钥库 `oneshot-release.jks`。
     - 提供 `keystore.properties.example` 环境变量与本地配置文件覆盖。
+  - [x] **8. 用户自定义 3D LUT (.cube) 动态导入与管理 (`CustomLutManager.kt`)**：
+    - 基于 Android SAF 原生文件选择器实现 `.cube` 胶卷文件无权限冗余动态导入与解析。
+    - 针对 OpenGL ES 3.0 非 4 字节对齐（17³ / 33³ 等）加入 `GL_UNPACK_ALIGNMENT` 硬件拉伸与偏色保护。
+    - 支持 DataStore 元数据序列化持久化、应用私有缓存隔离、内存 LRU/Concurrent 纹理缓存防掉帧热切换。
+    - Q 快速设定抽屉横向胶卷卡片、一键快速移除预设与确认弹窗交互闭环。
 
 ---
 
@@ -223,6 +228,7 @@ oneshot/
 │   │   │   └── gl/
 │   │   │       ├── CubeLutParser.kt   # .cube 3D LUT 解析与青橙/胶片/Flat Log 生成器
 │   │   │       ├── CubeLutRenderer.kt # OpenGL ES 3.0 3D 纹理与斑马纹/峰值对焦着色器
+│   │   │       ├── CustomLutManager.kt# 用户自定义 .cube 胶卷导入、缓存与持久化管理器
 │   │   │       └── OneshotGlProcessor.kt # SurfaceProcessor 与 CameraEffect 渲染管线
 │   │   ├── data/
 │   │   │   ├── CameraParameters.kt    # 参数枚举与默认配置 (画幅/HDR/LUT/音量键等)

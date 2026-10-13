@@ -18,8 +18,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "oneshot_camera_prefs")
+private val jsonFormat = Json { ignoreUnknownKeys = true }
 
 class ParameterStore(private val context: Context) {
 
@@ -53,6 +56,11 @@ class ParameterStore(private val context: Context) {
                 val cs = prefs[KEY_COLOR_SPACE] ?: ColorSpacePreset.REC_2020.name
                 val lut = prefs[KEY_LUT] ?: false
                 val lutPresetName = prefs[KEY_LUT_PRESET] ?: LutPreset.TEAL_AND_ORANGE.name
+                val selectedCustomId = prefs[KEY_SELECTED_CUSTOM_LUT_ID]
+                val customLutsRaw = prefs[KEY_CUSTOM_LUTS_JSON] ?: "[]"
+                val customLuts = runCatching {
+                    jsonFormat.decodeFromString<List<CustomLut>>(customLutsRaw)
+                }.getOrDefault(emptyList())
                 val lutBurn = prefs[KEY_LUT_BURN] ?: false
                 val peaking = prefs[KEY_PEAKING] ?: false
                 val zebra = prefs[KEY_ZEBRA] ?: false
@@ -80,6 +88,8 @@ class ParameterStore(private val context: Context) {
                     colorSpace = runCatching { ColorSpacePreset.valueOf(cs) }.getOrDefault(ColorSpacePreset.REC_2020),
                     lutEnabled = lut,
                     lutPreset = runCatching { LutPreset.valueOf(lutPresetName) }.getOrDefault(LutPreset.TEAL_AND_ORANGE),
+                    selectedCustomLutId = selectedCustomId,
+                    customLuts = customLuts,
                     lutBurnIn = lutBurn,
                     focusPeakingEnabled = peaking,
                     zebraPatternEnabled = zebra,
@@ -173,7 +183,62 @@ class ParameterStore(private val context: Context) {
     }
 
     fun setLutPreset(preset: LutPreset) {
-        scope.launch { context.dataStore.edit { it[KEY_LUT_PRESET] = preset.name } }
+        scope.launch {
+            context.dataStore.edit { prefs ->
+                prefs[KEY_LUT_PRESET] = preset.name
+                prefs.remove(KEY_SELECTED_CUSTOM_LUT_ID)
+            }
+        }
+    }
+
+    fun selectCustomLut(lutId: String?) {
+        scope.launch {
+            context.dataStore.edit { prefs ->
+                if (lutId == null) {
+                    prefs.remove(KEY_SELECTED_CUSTOM_LUT_ID)
+                } else {
+                    prefs[KEY_SELECTED_CUSTOM_LUT_ID] = lutId
+                    prefs[KEY_LUT] = true
+                }
+            }
+        }
+    }
+
+    fun addCustomLut(lut: CustomLut, selectImmediately: Boolean = true) {
+        scope.launch {
+            context.dataStore.edit { prefs ->
+                val currentRaw = prefs[KEY_CUSTOM_LUTS_JSON] ?: "[]"
+                val currentList = runCatching {
+                    jsonFormat.decodeFromString<List<CustomLut>>(currentRaw)
+                }.getOrDefault(emptyList()).toMutableList()
+
+                currentList.removeAll { it.id == lut.id }
+                currentList.add(lut)
+
+                prefs[KEY_CUSTOM_LUTS_JSON] = jsonFormat.encodeToString(currentList)
+                if (selectImmediately) {
+                    prefs[KEY_SELECTED_CUSTOM_LUT_ID] = lut.id
+                    prefs[KEY_LUT] = true
+                }
+            }
+        }
+    }
+
+    fun removeCustomLut(lutId: String) {
+        scope.launch {
+            context.dataStore.edit { prefs ->
+                val currentRaw = prefs[KEY_CUSTOM_LUTS_JSON] ?: "[]"
+                val currentList = runCatching {
+                    jsonFormat.decodeFromString<List<CustomLut>>(currentRaw)
+                }.getOrDefault(emptyList()).filter { it.id != lutId }
+
+                prefs[KEY_CUSTOM_LUTS_JSON] = jsonFormat.encodeToString(currentList)
+                if (prefs[KEY_SELECTED_CUSTOM_LUT_ID] == lutId) {
+                    prefs.remove(KEY_SELECTED_CUSTOM_LUT_ID)
+                    prefs[KEY_LUT_PRESET] = LutPreset.TEAL_AND_ORANGE.name
+                }
+            }
+        }
     }
 
     fun setLutBurnIn(burnIn: Boolean) {
@@ -211,6 +276,8 @@ class ParameterStore(private val context: Context) {
         val KEY_COLOR_SPACE = stringPreferencesKey("color_space")
         val KEY_LUT = booleanPreferencesKey("lut_enabled")
         val KEY_LUT_PRESET = stringPreferencesKey("lut_preset")
+        val KEY_SELECTED_CUSTOM_LUT_ID = stringPreferencesKey("selected_custom_lut_id")
+        val KEY_CUSTOM_LUTS_JSON = stringPreferencesKey("custom_luts_json")
         val KEY_LUT_BURN = booleanPreferencesKey("lut_burn_in")
         val KEY_PEAKING = booleanPreferencesKey("focus_peaking")
         val KEY_ZEBRA = booleanPreferencesKey("zebra_pattern")

@@ -82,6 +82,7 @@ class CubeLutRenderer {
         currentLutData = lutData
 
         GLES30.glBindTexture(GLES30.GL_TEXTURE_3D, lutTextureId[0])
+        GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 1)
         lutData.buffer.rewind()
         GLES30.glTexImage3D(
             GLES30.GL_TEXTURE_3D,

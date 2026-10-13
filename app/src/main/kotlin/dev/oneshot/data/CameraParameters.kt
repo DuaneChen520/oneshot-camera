@@ -2,6 +2,7 @@ package dev.oneshot.data
 
 import androidx.camera.core.AspectRatio
 import androidx.camera.video.Quality
+import kotlinx.serialization.Serializable
 
 enum class AspectRatioMode(val label: String, val cameraXRatio: Int, val widthRatio: Float, val heightRatio: Float) {
     RATIO_4_3("4:3 全画幅", AspectRatio.RATIO_4_3, 4f, 3f),
@@ -58,6 +59,15 @@ enum class LutPreset(val label: String) {
     FLAT_LOG("平坦 Log 灰片 (Flat Log)"),
 }
 
+@Serializable
+data class CustomLut(
+    val id: String,
+    val name: String,
+    val fileName: String,
+    val size: Int = 17,
+    val importedAtMs: Long = 0L,
+)
+
 data class CameraSettings(
     val aspectMode: AspectRatioMode = AspectRatioMode.RATIO_4_3,
     val dynamicRange: DynamicRangeMode = DynamicRangeMode.HLG10,
@@ -81,6 +91,8 @@ data class CameraSettings(
     val colorSpace: ColorSpacePreset = ColorSpacePreset.REC_2020,
     val lutEnabled: Boolean = false,
     val lutPreset: LutPreset = LutPreset.TEAL_AND_ORANGE,
+    val selectedCustomLutId: String? = null,
+    val customLuts: List<CustomLut> = emptyList(),
     val lutBurnIn: Boolean = false, // false = preview only, true = burn-in to recorded file
     val focusPeakingEnabled: Boolean = false,
     val zebraPatternEnabled: Boolean = false,

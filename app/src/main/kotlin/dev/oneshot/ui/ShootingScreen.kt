@@ -23,10 +23,14 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import android.widget.Toast
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -53,8 +57,12 @@ import dev.oneshot.data.AspectRatioMode
 import dev.oneshot.data.DynamicRangeMode
 import dev.oneshot.data.FpsPreset
 import dev.oneshot.data.LensFacingMode
+import dev.oneshot.data.CustomLut
 import dev.oneshot.data.ParameterStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
@@ -167,6 +175,37 @@ fun ShootingScreen(
     var isQMenuOpen by remember { mutableStateOf(false) }
     var isAbgmDialogOpen by remember { mutableStateOf(false) }
     var isShutterFlashVisible by remember { mutableStateOf(false) }
+
+    val scope = rememberCoroutineScope()
+    var lutToDelete by remember { mutableStateOf<CustomLut?>(null) }
+
+    val lutPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val result = withContext(Dispatchers.IO) {
+                    cameraController.customLutManager.importLut(uri, context.contentResolver)
+                }
+                result.onSuccess { customLut ->
+                    parameterStore.addCustomLut(customLut, selectImmediately = true)
+                    hapticManager.shutterClick()
+                    Toast.makeText(
+                        context,
+                        "已导入胶卷「${customLut.name}」(${customLut.size}³)",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }.onFailure { error ->
+                    hapticManager.tick()
+                    Toast.makeText(
+                        context,
+                        "导入失败: ${error.message ?: "无效的 .cube 文件"}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
 
     // Shutter mirror blackout flash animation
     LaunchedEffect(recordingStatus.shutterAnimationTick) {
@@ -379,6 +418,9 @@ fun ShootingScreen(
             onSetColorSpace = { parameterStore.setColorSpace(it) },
             onToggleLut = { parameterStore.setLutEnabled(it) },
             onSetLutPreset = { parameterStore.setLutPreset(it) },
+            onSelectCustomLut = { parameterStore.selectCustomLut(it) },
+            onImportLutClick = { lutPickerLauncher.launch(arrayOf("*/*")) },
+            onDeleteCustomLut = { lutToDelete = it },
             onToggleLutBurnIn = { parameterStore.setLutBurnIn(it) },
             onToggleFocusPeaking = { parameterStore.setFocusPeaking(it) },
             onToggleZebraPattern = { parameterStore.setZebraPattern(it) },
@@ -400,6 +442,48 @@ fun ShootingScreen(
                 },
                 onDismiss = { isAbgmDialogOpen = false },
                 hapticManager = hapticManager
+            )
+        }
+
+        // 6. Overlays: Custom LUT Delete Confirmation Dialog
+        if (lutToDelete != null) {
+            val targetLut = lutToDelete!!
+            AlertDialog(
+                onDismissRequest = { lutToDelete = null },
+                title = {
+                    Text(
+                        text = "移除胶卷预设",
+                        color = OneShotTheme.FilmSilver,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = OneShotTheme.MonospaceFont
+                    )
+                },
+                text = {
+                    Text(
+                        text = "确定从机身胶卷仓中移除「${targetLut.name}」(${targetLut.size}³) 吗？\n文件将从应用存储中删除。",
+                        color = OneShotTheme.TitaniumGray,
+                        fontSize = 13.sp
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            cameraController.customLutManager.deleteLut(targetLut.id, targetLut.fileName)
+                        }
+                        parameterStore.removeCustomLut(targetLut.id)
+                        hapticManager.tick()
+                        lutToDelete = null
+                        Toast.makeText(context, "已移除胶卷「${targetLut.name}」", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Text("确认移除", color = OneShotTheme.DarkroomRed, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { lutToDelete = null }) {
+                        Text("取消", color = OneShotTheme.TitaniumGray)
+                    }
+                },
+                containerColor = OneShotTheme.ObsidianBlack,
             )
         }
     }

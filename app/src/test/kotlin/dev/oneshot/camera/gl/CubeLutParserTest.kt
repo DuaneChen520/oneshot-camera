@@ -33,6 +33,39 @@ class CubeLutParserTest {
     }
 
     @Test
+    fun testParseCubeWithMetadata() {
+        val sampleCube = """
+            # Cinematic Kodak 2383 emulation
+            TITLE "Kodak 2383 D55"
+            LUT_3D_SIZE 2
+            0.0 0.0 0.0
+            1.0 0.0 0.0
+            0.0 1.0 0.0
+            1.0 1.0 0.0
+            0.0 0.0 1.0
+            1.0 0.0 1.0
+            0.0 1.0 1.0
+            1.0 1.0 1.0
+        """.trimIndent()
+
+        val parsed = CubeLutParser.parseWithMetadata(ByteArrayInputStream(sampleCube.toByteArray()))
+        assertEquals("Kodak 2383 D55", parsed.title)
+        assertEquals(2, parsed.lutData.size)
+        assertEquals(24, parsed.lutData.buffer.remaining())
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun testParseInvalidCubeThrowsException() {
+        val invalidCube = """
+            # Corrupted LUT with missing data
+            LUT_3D_SIZE 4
+            0.1 0.2 0.3
+        """.trimIndent()
+
+        CubeLutParser.parseWithMetadata(ByteArrayInputStream(invalidCube.toByteArray()))
+    }
+
+    @Test
     fun testCreateTealAndOrange() {
         val size = 17
         val lut = CubeLutParser.createTealAndOrange(size)

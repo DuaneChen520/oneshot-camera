@@ -26,7 +26,9 @@ class OneshotCameraEffect(
     val processor: SurfaceProcessor,
 ) : CameraEffect(targets, executor, processor, Consumer { })
 
-class OneshotGlProcessor : SurfaceProcessor {
+class OneshotGlProcessor(
+    private val customLutManager: CustomLutManager? = null,
+) : SurfaceProcessor {
 
     private val glThread = HandlerThread("OneshotGlThread").apply { start() }
     private val glHandler = Handler(glThread.looper)
@@ -50,6 +52,7 @@ class OneshotGlProcessor : SurfaceProcessor {
     // Active visual effect state
     @Volatile private var isLutEnabled: Boolean = false
     @Volatile private var currentPreset: LutPreset = LutPreset.TEAL_AND_ORANGE
+    @Volatile private var currentCustomLutId: String? = null
     @Volatile private var isPeakingEnabled: Boolean = false
     @Volatile private var isZebraEnabled: Boolean = false
 
@@ -68,20 +71,42 @@ class OneshotGlProcessor : SurfaceProcessor {
     }
 
     fun updateSettings(settings: CameraSettings) {
+        val oldLutEnabled = isLutEnabled
+        val oldPreset = currentPreset
+        val oldCustomId = currentCustomLutId
+
         isLutEnabled = settings.lutEnabled
         currentPreset = settings.lutPreset
+        currentCustomLutId = settings.selectedCustomLutId
         isPeakingEnabled = settings.focusPeakingEnabled
         isZebraEnabled = settings.zebraPatternEnabled
 
-        glHandler.post {
-            val rend = renderer ?: return@post
-            val lutData = when (currentPreset) {
-                LutPreset.TEAL_AND_ORANGE -> CubeLutParser.createTealAndOrange()
-                LutPreset.KODAK_PORTRA -> CubeLutParser.createKodakPortra()
-                LutPreset.FLAT_LOG -> CubeLutParser.createFlatLog()
+        val lutChanged = oldLutEnabled != isLutEnabled ||
+                         oldPreset != currentPreset ||
+                         oldCustomId != currentCustomLutId
+
+        if (lutChanged && isLutEnabled) {
+            glHandler.post {
+                val rend = renderer ?: return@post
+                val lutData: Lut3dData = if (settings.selectedCustomLutId != null && customLutManager != null) {
+                    val custom = settings.customLuts.find { it.id == settings.selectedCustomLutId }
+                    if (custom != null) {
+                        customLutManager.getLutData(custom) ?: getBuiltInLut(currentPreset)
+                    } else {
+                        getBuiltInLut(currentPreset)
+                    }
+                } else {
+                    getBuiltInLut(currentPreset)
+                }
+                rend.loadLut(lutData)
             }
-            rend.loadLut(lutData)
         }
+    }
+
+    private fun getBuiltInLut(preset: LutPreset): Lut3dData = when (preset) {
+        LutPreset.TEAL_AND_ORANGE -> CubeLutParser.createTealAndOrange()
+        LutPreset.KODAK_PORTRA -> CubeLutParser.createKodakPortra()
+        LutPreset.FLAT_LOG -> CubeLutParser.createFlatLog()
     }
 
     private fun initEgl() {

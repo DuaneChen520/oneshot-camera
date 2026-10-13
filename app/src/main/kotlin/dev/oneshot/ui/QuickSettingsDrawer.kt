@@ -38,6 +38,7 @@ import dev.oneshot.camera.HapticManager
 import dev.oneshot.data.AspectRatioMode
 import dev.oneshot.data.CameraSettings
 import dev.oneshot.data.ColorSpacePreset
+import dev.oneshot.data.CustomLut
 import dev.oneshot.data.DynamicRangeMode
 import dev.oneshot.data.FpsPreset
 import dev.oneshot.data.LutPreset
@@ -65,6 +66,9 @@ fun QuickSettingsDrawer(
     onSetColorSpace: (ColorSpacePreset) -> Unit,
     onToggleLut: (Boolean) -> Unit,
     onSetLutPreset: (LutPreset) -> Unit,
+    onSelectCustomLut: (String) -> Unit = {},
+    onImportLutClick: () -> Unit = {},
+    onDeleteCustomLut: (CustomLut) -> Unit = {},
     onToggleLutBurnIn: (Boolean) -> Unit,
     onToggleFocusPeaking: (Boolean) -> Unit,
     onToggleZebraPattern: (Boolean) -> Unit,
@@ -302,17 +306,59 @@ fun QuickSettingsDrawer(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     LutPreset.values().forEach { preset ->
                         DrawerTile(
                             title = preset.label,
-                            isSelected = settings.lutEnabled && settings.lutPreset == preset,
+                            isSelected = settings.lutEnabled && settings.selectedCustomLutId == null && settings.lutPreset == preset,
                             onClick = {
                                 onSetLutPreset(preset)
                                 if (!settings.lutEnabled) onToggleLut(true)
                                 hapticManager.tick()
                             }
+                        )
+                    }
+
+                    // User imported custom LUTs
+                    settings.customLuts.forEach { customLut ->
+                        CustomLutTile(
+                            customLut = customLut,
+                            isSelected = settings.lutEnabled && settings.selectedCustomLutId == customLut.id,
+                            onClick = {
+                                onSelectCustomLut(customLut.id)
+                                if (!settings.lutEnabled) onToggleLut(true)
+                                hapticManager.tick()
+                            },
+                            onDelete = {
+                                onDeleteCustomLut(customLut)
+                                hapticManager.tick()
+                            }
+                        )
+                    }
+
+                    // Import Tile
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(OneShotTheme.ChassisCard)
+                            .border(
+                                width = 1.dp,
+                                color = OneShotTheme.AmberGrain.copy(alpha = 0.7f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .clickable {
+                                onImportLutClick()
+                                hapticManager.tick()
+                            }
+                            .padding(horizontal = 10.dp, vertical = 7.dp)
+                    ) {
+                        Text(
+                            text = "[ + 导入 .cube 胶卷 ]",
+                            color = OneShotTheme.AmberGrain,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
@@ -431,5 +477,52 @@ private fun DrawerTile(
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
+    }
+}
+
+@Composable
+private fun CustomLutTile(
+    customLut: CustomLut,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isSelected) OneShotTheme.AmberGrainMuted else OneShotTheme.ChassisCard)
+            .border(
+                width = 1.dp,
+                color = if (isSelected) OneShotTheme.AmberGrain else OneShotTheme.TitaniumBorder,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(start = 10.dp, end = 6.dp, top = 5.dp, bottom = 5.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = "胶卷 · ${customLut.name} (${customLut.size}³)",
+                color = if (isSelected) OneShotTheme.AmberGrain else OneShotTheme.FilmSilver,
+                fontSize = 11.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0x228E8E93))
+                    .clickable(onClick = onDelete)
+                    .padding(horizontal = 5.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "✕",
+                    color = OneShotTheme.TitaniumGray,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
