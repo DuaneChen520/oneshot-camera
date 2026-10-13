@@ -65,6 +65,8 @@ class ParameterStore(private val context: Context) {
                 val peaking = prefs[KEY_PEAKING] ?: false
                 val zebra = prefs[KEY_ZEBRA] ?: false
                 val histModeName = prefs[KEY_HISTOGRAM_MODE] ?: HistogramMode.OFF.name
+                val autoFocus = prefs[KEY_AUTO_FOCUS] ?: true
+                val focusDist = prefs[KEY_FOCUS_DISTANCE] ?: 0.0f
 
                 _settings.value = CameraSettings(
                     aspectMode = runCatching { AspectRatioMode.valueOf(aspectName) }.getOrDefault(AspectRatioMode.RATIO_4_3),
@@ -92,6 +94,8 @@ class ParameterStore(private val context: Context) {
                     selectedCustomLutId = selectedCustomId,
                     customLuts = customLuts,
                     lutBurnIn = lutBurn,
+                    isAutoFocus = autoFocus,
+                    focusDistance = focusDist,
                     focusPeakingEnabled = peaking,
                     zebraPatternEnabled = zebra,
                     histogramMode = runCatching { HistogramMode.valueOf(histModeName) }.getOrDefault(HistogramMode.OFF),
@@ -259,6 +263,14 @@ class ParameterStore(private val context: Context) {
         scope.launch { context.dataStore.edit { it[KEY_HISTOGRAM_MODE] = mode.name } }
     }
 
+    fun setAutoFocus(auto: Boolean) {
+        scope.launch { context.dataStore.edit { it[KEY_AUTO_FOCUS] = auto } }
+    }
+
+    fun setFocusDistance(distance: Float) {
+        scope.launch { context.dataStore.edit { it[KEY_FOCUS_DISTANCE] = distance.coerceIn(0.0f, 10.0f) } }
+    }
+
     private companion object {
         val KEY_ASPECT = stringPreferencesKey("aspect_mode")
         val KEY_DR = stringPreferencesKey("dynamic_range")
@@ -285,6 +297,8 @@ class ParameterStore(private val context: Context) {
         val KEY_SELECTED_CUSTOM_LUT_ID = stringPreferencesKey("selected_custom_lut_id")
         val KEY_CUSTOM_LUTS_JSON = stringPreferencesKey("custom_luts_json")
         val KEY_LUT_BURN = booleanPreferencesKey("lut_burn_in")
+        val KEY_AUTO_FOCUS = booleanPreferencesKey("auto_focus")
+        val KEY_FOCUS_DISTANCE = floatPreferencesKey("focus_distance")
         val KEY_PEAKING = booleanPreferencesKey("focus_peaking")
         val KEY_ZEBRA = booleanPreferencesKey("zebra_pattern")
         val KEY_HISTOGRAM_MODE = stringPreferencesKey("histogram_mode")

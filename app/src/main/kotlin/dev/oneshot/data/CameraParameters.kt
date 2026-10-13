@@ -100,6 +100,8 @@ data class CameraSettings(
     val selectedCustomLutId: String? = null,
     val customLuts: List<CustomLut> = emptyList(),
     val lutBurnIn: Boolean = false, // false = preview only, true = burn-in to recorded file
+    val isAutoFocus: Boolean = true,
+    val focusDistance: Float = 0.0f, // Diopters: 0.0f (infinity) to 10.0f (macro ~10cm)
     val focusPeakingEnabled: Boolean = false,
     val zebraPatternEnabled: Boolean = false,
     val histogramMode: HistogramMode = HistogramMode.OFF,

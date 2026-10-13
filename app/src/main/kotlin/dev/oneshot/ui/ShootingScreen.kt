@@ -372,7 +372,7 @@ fun ShootingScreen(
             modifier = Modifier.align(Alignment.BottomCenter),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // In-place parameter gestures HUD (ZOOM, EV, Shutter Speed, ISO, WB)
+            // In-place parameter gestures HUD (Shutter, ISO, EV, Zoom, Focus, WB)
             ProHud(
                 settings = settings,
                 zoomRange = zoomRange,
@@ -386,6 +386,8 @@ fun ShootingScreen(
                 onShutterSpeedChange = { parameterStore.setShutterSpeedNanos(it) },
                 onToggleAutoIso = { parameterStore.setAutoIso(it) },
                 onIsoChange = { parameterStore.setIsoValue(it) },
+                onToggleAutoFocus = { cameraController.setAutoFocus(it) },
+                onFocusDistanceChange = { cameraController.setManualFocus(it) },
                 onToggleAutoWb = { parameterStore.setAutoWb(it) },
                 onCctChange = { parameterStore.setCctKelvin(it) },
                 onOpenWbDialog = { isAbgmDialogOpen = true },

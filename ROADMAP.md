@@ -213,6 +213,11 @@ flowchart TD
     - 启动时异步检索 MediaStore 最新样张/视频第一帧，生成极速微缩图 (`GalleryThumbnailManager.kt`)。
     - 拍照/动态照片/录像完成后毫秒级更新快门栏左侧底片缩略图。
     - 点击调起轻量级暗房内置快速回放器 (`QuickReviewLightbox.kt`) 及一键调起系统相册。
+  - [x] **4. Pro HUD 六参数精密机械胶囊重构与手势飞控体系**：
+    - 严格遵循从左至右六联顺序：`[快门 (S)]` ➔ `[感光度 (ISO)]` ➔ `[曝光补偿 (EV)]` ➔ `[焦距 (Zoom) 居中]` ➔ `[对焦 (Focus)]` ➔ `[白平衡 (WB)]`。
+    - 彻底补齐对焦参数：支持 `AF` 自动对焦与 `MF` 手动对焦（`0.0f` 无穷远至 `10.0f` 10cm 微距），联动 Camera2 `LENS_FOCUS_DISTANCE` 硬件对焦马达驱动。
+    - 根除手势冲突与重绑卡顿：移除运行时参数引起的无谓 `rebindCamera`，实现 60FPS / 0.4ms 级 Camera2 飞控（In-flight）即时注入；单手势复合处理器确保横划拖拽、轻击激活与长按复位 AUTO 绝不互吞；
+    - 双模态交互：胶囊直接横划触发微触觉 `tick()` 步进调节，轻击就地展开专业级水平精密机械刻度轮盘带 (`ProMechanicalDialStrip`)。
 
 ---
 

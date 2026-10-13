@@ -120,11 +120,27 @@ class CameraController(
     val histogramData: StateFlow<dev.oneshot.camera.gl.HistogramData?>
         get() = glProcessor?.histogramData ?: _emptyHistogram
 
+    private var lastBoundSettings: CameraSettings? = null
+
     init {
         scope.launch {
             parameterStore.settings.collectLatest { settings ->
                 if (activeLifecycleOwner != null && activeSurfaceProvider != null) {
-                    rebindCamera(activeLifecycleOwner!!, activeSurfaceProvider!!, settings)
+                    val prev = lastBoundSettings
+                    val needsRebind = prev == null ||
+                        prev.lensFacing != settings.lensFacing ||
+                        prev.aspectMode != settings.aspectMode ||
+                        prev.dynamicRange != settings.dynamicRange ||
+                        prev.quality != settings.quality ||
+                        prev.dcgHdrEnabled != settings.dcgHdrEnabled ||
+                        prev.ultraHdrEnabled != settings.ultraHdrEnabled ||
+                        prev.lutBurnIn != settings.lutBurnIn
+
+                    if (needsRebind) {
+                        rebindCamera(activeLifecycleOwner!!, activeSurfaceProvider!!, settings)
+                    } else {
+                        applyInFlightParameters(settings)
+                    }
                 }
             }
         }
@@ -293,6 +309,7 @@ class CameraController(
                 }
             }
         }
+        lastBoundSettings = settings
     }
 
     private fun updateCameraCapabilities(camera: Camera) {
@@ -322,6 +339,18 @@ class CameraController(
         _currentEvIndex.value = clamped
         parameterStore.setEvIndex(clamped)
         boundCamera?.cameraControl?.setExposureCompensationIndex(clamped)
+        hapticManager.tick()
+    }
+
+    fun setManualFocus(distance: Float) {
+        val clamped = distance.coerceIn(0.0f, 10.0f)
+        parameterStore.setAutoFocus(false)
+        parameterStore.setFocusDistance(clamped)
+        hapticManager.tick()
+    }
+
+    fun setAutoFocus(auto: Boolean) {
+        parameterStore.setAutoFocus(auto)
         hapticManager.tick()
     }
 
@@ -397,22 +426,38 @@ class CameraController(
                 CaptureRequest.CONTROL_AE_MODE,
                 CaptureRequest.CONTROL_AE_MODE_OFF
             )
-            if (!settings.isAutoShutter) {
-                optionsBuilder.setCaptureRequestOption(
-                    CaptureRequest.SENSOR_EXPOSURE_TIME,
-                    settings.shutterSpeedNanos
-                )
-            }
-            if (!settings.isAutoIso) {
-                optionsBuilder.setCaptureRequestOption(
-                    CaptureRequest.SENSOR_SENSITIVITY,
-                    settings.isoValue
-                )
-            }
+            // When AE is OFF, both exposure time and sensitivity must be provided
+            val effectiveShutter = if (!settings.isAutoShutter) settings.shutterSpeedNanos else (1_000_000_000L / 60L)
+            val effectiveIso = if (!settings.isAutoIso) settings.isoValue else 100
+            optionsBuilder.setCaptureRequestOption(
+                CaptureRequest.SENSOR_EXPOSURE_TIME,
+                effectiveShutter
+            )
+            optionsBuilder.setCaptureRequestOption(
+                CaptureRequest.SENSOR_SENSITIVITY,
+                effectiveIso
+            )
         } else {
             optionsBuilder.setCaptureRequestOption(
                 CaptureRequest.CONTROL_AE_MODE,
                 CaptureRequest.CONTROL_AE_MODE_ON
+            )
+        }
+
+        // 6. Focus Control (AF vs Manual Focus Diopters)
+        if (settings.isAutoFocus) {
+            optionsBuilder.setCaptureRequestOption(
+                CaptureRequest.CONTROL_AF_MODE,
+                CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
+            )
+        } else {
+            optionsBuilder.setCaptureRequestOption(
+                CaptureRequest.CONTROL_AF_MODE,
+                CaptureRequest.CONTROL_AF_MODE_OFF
+            )
+            optionsBuilder.setCaptureRequestOption(
+                CaptureRequest.LENS_FOCUS_DISTANCE,
+                settings.focusDistance.coerceIn(0.0f, 10.0f)
             )
         }
 

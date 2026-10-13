@@ -32,6 +32,8 @@ class CameraSettingsTest {
         assertEquals(null, settings.selectedCustomLutId)
         assertTrue(settings.customLuts.isEmpty())
         assertFalse(settings.lutBurnIn)
+        assertTrue(settings.isAutoFocus)
+        assertEquals(0.0f, settings.focusDistance, 0.001f)
         assertFalse(settings.focusPeakingEnabled)
         assertFalse(settings.zebraPatternEnabled)
         assertEquals(HistogramMode.OFF, settings.histogramMode)
