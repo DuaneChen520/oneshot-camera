@@ -92,7 +92,7 @@ class ProbeActivity : ComponentActivity() {
             withContext(Dispatchers.IO) {
                 runCatching { runner.runStaticPhases() }
                     .onFailure { append("ABORTED in A+C: ${it.javaClass.name}: ${it.message}") }
-                runCatching { runner.runBindPhases(this@ProbeActivity, reportFile().parentFile) }
+                runCatching { runner.runBindPhases(this@ProbeActivity, reportFile().parentFile ?: filesDir) }
                     .onFailure { append("ABORTED in B+D: ${it.javaClass.name}: ${it.message}") }
             }
             append("Done. Phases A, C, B, D written to ${reportFile().absolutePath}")

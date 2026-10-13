@@ -147,7 +147,7 @@ class PhaseD(
         attempt: Attempt,
     ): JsonObject {
         val negotiated = Collections.synchronizedList(mutableListOf<String>())
-        val built = runCatching { buildConfig(attempt, negotiated) }
+        val built = runCatching { harness.onMain { buildConfig(attempt, negotiated) } }
         val pair = built.getOrNull()
 
         if (pair == null) {
@@ -166,7 +166,7 @@ class PhaseD(
                 put("tier", attempt.tier)
                 put("reason", attempt.reason)
                 put("request", requestSummary(attempt))
-                put("isSessionConfigSupported", runCatching { info.isSessionConfigSupported(config) }.getOrNull())
+                put("isSessionConfigSupported", runCatching { harness.onMain { info.isSessionConfigSupported(config) } }.getOrNull())
                 val bind = runCatching { harness.bind(provider, selector, config) }
                 put("bindError", bind.exceptionOrNull()?.let(::describe))
                 if (bind.isSuccess) {

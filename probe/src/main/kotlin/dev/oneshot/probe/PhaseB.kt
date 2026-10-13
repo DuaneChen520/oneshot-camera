@@ -137,7 +137,7 @@ class PhaseB(
     ): JsonObject {
         onProgress("  Phase B: ${shape.label}")
         val negotiated = mutableListOf<String>()
-        val built = runCatching { buildSessionConfig(shape, negotiated) }
+        val built = runCatching { harness.onMain { buildSessionConfig(shape, negotiated) } }
         val config = built.getOrNull() ?: return buildJsonObject {
             put("label", shape.label)
             put("reason", shape.reason)
@@ -149,15 +149,15 @@ class PhaseB(
                 put("label", shape.label)
                 put("reason", shape.reason)
                 put("shape", describeShape(shape))
-                put("isSessionConfigSupported", runCatching { info.isSessionConfigSupported(config) }.getOrNull())
+                put("isSessionConfigSupported", runCatching { harness.onMain { info.isSessionConfigSupported(config) } }.getOrNull())
                 val bound = runCatching { harness.bind(provider, selector, config) }
                 put("bindError", bound.exceptionOrNull()?.let(::describe))
                 put("bindCameraLensFacing", bound.getOrNull()?.cameraInfo?.lensFacing)
-                put("isBound", runCatching { provider.isBound(config) }.getOrNull())
+                put("isBound", runCatching { harness.onMain { provider.isBound(config) } }.getOrNull())
                 harness.settle(SETTLE_MS)
                 put("negotiated", jsonOf(negotiated))
                 put("supportedFrameRateRangesForConfig", jsonOf(
-                    runCatching { info.getSupportedFrameRateRanges(config) }.getOrNull()
+                    runCatching { harness.onMain { info.getSupportedFrameRateRanges(config) } }.getOrNull()
                         ?.map { "${it.lower}-${it.upper}" }
                 ))
             }
