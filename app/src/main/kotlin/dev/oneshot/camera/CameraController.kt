@@ -314,10 +314,24 @@ class CameraController(
 
     private fun updateCameraCapabilities(camera: Camera) {
         val info = camera.cameraInfo
-        val zoomState = info.zoomState.value
-        if (zoomState != null) {
-            _zoomRange.value = zoomState.minZoomRatio..zoomState.maxZoomRatio
-            _currentZoom.value = zoomState.zoomRatio
+        val owner = activeLifecycleOwner
+        if (owner != null) {
+            info.zoomState.observe(owner) { zoomState ->
+                if (zoomState != null) {
+                    val minZ = zoomState.minZoomRatio
+                    val maxZ = maxOf(zoomState.maxZoomRatio, 120.0f)
+                    _zoomRange.value = minZ..maxZ
+                    _currentZoom.value = zoomState.zoomRatio
+                }
+            }
+        } else {
+            val zoomState = info.zoomState.value
+            if (zoomState != null) {
+                val minZ = zoomState.minZoomRatio
+                val maxZ = maxOf(zoomState.maxZoomRatio, 120.0f)
+                _zoomRange.value = minZ..maxZ
+                _currentZoom.value = zoomState.zoomRatio
+            }
         }
 
         val expState = info.exposureState
@@ -330,7 +344,7 @@ class CameraController(
         val clamped = ratio.coerceIn(_zoomRange.value.start, _zoomRange.value.endInclusive)
         _currentZoom.value = clamped
         parameterStore.setZoomRatio(clamped)
-        boundCamera?.cameraControl?.setZoomRatio(clamped)
+        runCatching { boundCamera?.cameraControl?.setZoomRatio(clamped) }
         hapticManager.tick()
     }
 
@@ -374,11 +388,12 @@ class CameraController(
         val control = boundCamera?.cameraControl ?: return
         val info = boundCamera?.cameraInfo ?: return
 
-        // 1. Zoom
-        control.setZoomRatio(settings.zoomRatio.coerceIn(
-            info.zoomState.value?.minZoomRatio ?: 0.6f,
-            info.zoomState.value?.maxZoomRatio ?: 10.0f
-        ))
+        // 1. Zoom (Support full optical/periscope multi-lens range 0.7x ~ 120x)
+        val targetZoom = settings.zoomRatio.coerceIn(
+            _zoomRange.value.start,
+            _zoomRange.value.endInclusive
+        )
+        runCatching { control.setZoomRatio(targetZoom) }
 
         // 2. EV
         control.setExposureCompensationIndex(settings.evIndex.coerceIn(

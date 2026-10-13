@@ -67,6 +67,12 @@ class ParameterStore(private val context: Context) {
                 val histModeName = prefs[KEY_HISTOGRAM_MODE] ?: HistogramMode.OFF.name
                 val autoFocus = prefs[KEY_AUTO_FOCUS] ?: true
                 val focusDist = prefs[KEY_FOCUS_DISTANCE] ?: 0.0f
+                val presetsRaw = prefs[KEY_HUD_PRESETS_JSON]
+                val hudPresets = if (presetsRaw != null) {
+                    runCatching { jsonFormat.decodeFromString<ProHudPresets>(presetsRaw) }.getOrDefault(ProHudPresets())
+                } else {
+                    ProHudPresets()
+                }
 
                 _settings.value = CameraSettings(
                     aspectMode = runCatching { AspectRatioMode.valueOf(aspectName) }.getOrDefault(AspectRatioMode.RATIO_4_3),
@@ -99,6 +105,7 @@ class ParameterStore(private val context: Context) {
                     focusPeakingEnabled = peaking,
                     zebraPatternEnabled = zebra,
                     histogramMode = runCatching { HistogramMode.valueOf(histModeName) }.getOrDefault(HistogramMode.OFF),
+                    hudPresets = hudPresets,
                 )
             }
         }
@@ -271,6 +278,21 @@ class ParameterStore(private val context: Context) {
         scope.launch { context.dataStore.edit { it[KEY_FOCUS_DISTANCE] = distance.coerceIn(0.0f, 10.0f) } }
     }
 
+    fun updateHudPresets(updater: (ProHudPresets) -> ProHudPresets) {
+        scope.launch {
+            context.dataStore.edit { prefs ->
+                val currentRaw = prefs[KEY_HUD_PRESETS_JSON]
+                val current = if (currentRaw != null) {
+                    runCatching { jsonFormat.decodeFromString<ProHudPresets>(currentRaw) }.getOrDefault(ProHudPresets())
+                } else {
+                    ProHudPresets()
+                }
+                val updated = updater(current)
+                prefs[KEY_HUD_PRESETS_JSON] = jsonFormat.encodeToString(updated)
+            }
+        }
+    }
+
     private companion object {
         val KEY_ASPECT = stringPreferencesKey("aspect_mode")
         val KEY_DR = stringPreferencesKey("dynamic_range")
@@ -302,5 +324,6 @@ class ParameterStore(private val context: Context) {
         val KEY_PEAKING = booleanPreferencesKey("focus_peaking")
         val KEY_ZEBRA = booleanPreferencesKey("zebra_pattern")
         val KEY_HISTOGRAM_MODE = stringPreferencesKey("histogram_mode")
+        val KEY_HUD_PRESETS_JSON = stringPreferencesKey("hud_presets_json")
     }
 }

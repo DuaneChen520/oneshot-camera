@@ -105,4 +105,21 @@ data class CameraSettings(
     val focusPeakingEnabled: Boolean = false,
     val zebraPatternEnabled: Boolean = false,
     val histogramMode: HistogramMode = HistogramMode.OFF,
+    val hudPresets: ProHudPresets = ProHudPresets(),
+)
+
+@Serializable
+data class ProHudPresets(
+    val shutterPresets: List<Long> = listOf(
+        1_000_000_000L / 1000L,
+        1_000_000_000L / 500L,
+        1_000_000_000L / 250L,
+        1_000_000_000L / 125L,
+        1_000_000_000L / 60L
+    ),
+    val isoPresets: List<Int> = listOf(100, 200, 400, 800, 1600),
+    val evPresets: List<Int> = listOf(-2, -1, 1, 2, 4), // indices corresponding to EV values
+    val zoomPresets: List<Float> = listOf(0.7f, 1.0f, 2.0f, 5.0f, 10.0f),
+    val focusPresets: List<Float> = listOf(0.0f, 0.33f, 1.0f, 2.0f, 10.0f), // Diopters (∞, 3m, 1m, 0.5m, 0.1m)
+    val wbPresets: List<Int> = listOf(3200, 4000, 5500, 6500, 7500),
 )

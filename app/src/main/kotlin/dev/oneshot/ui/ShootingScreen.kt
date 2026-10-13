@@ -390,6 +390,7 @@ fun ShootingScreen(
                 onFocusDistanceChange = { cameraController.setManualFocus(it) },
                 onToggleAutoWb = { parameterStore.setAutoWb(it) },
                 onCctChange = { parameterStore.setCctKelvin(it) },
+                onUpdateHudPresets = { parameterStore.updateHudPresets(it) },
                 onOpenWbDialog = { isAbgmDialogOpen = true },
                 hapticManager = hapticManager
             )

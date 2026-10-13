@@ -37,6 +37,20 @@ class CameraSettingsTest {
         assertFalse(settings.focusPeakingEnabled)
         assertFalse(settings.zebraPatternEnabled)
         assertEquals(HistogramMode.OFF, settings.histogramMode)
+        assertEquals(5, settings.hudPresets.shutterPresets.size)
+        assertEquals(5, settings.hudPresets.isoPresets.size)
+        assertEquals(5, settings.hudPresets.evPresets.size)
+        assertEquals(5, settings.hudPresets.zoomPresets.size)
+        assertEquals(5, settings.hudPresets.focusPresets.size)
+        assertEquals(5, settings.hudPresets.wbPresets.size)
+    }
+
+    @Test
+    fun testHudPresetsSerialization() {
+        val presets = ProHudPresets()
+        val json = kotlinx.serialization.json.Json.encodeToString(ProHudPresets.serializer(), presets)
+        val decoded = kotlinx.serialization.json.Json.decodeFromString(ProHudPresets.serializer(), json)
+        assertEquals(presets, decoded)
     }
 
     @Test
