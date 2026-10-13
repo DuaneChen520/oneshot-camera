@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -134,7 +135,12 @@ fun QuickSettingsDrawer(
 
                 // Section 2: Video Resolution & Quality Ladder
                 DrawerSectionTitle("视频画质天梯 (Resolution)")
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     capabilities.supportedQualities.forEach { q ->
                         DrawerTile(
                             title = q.label,
@@ -223,7 +229,12 @@ fun QuickSettingsDrawer(
 
                 // Section 6: Color Space (M4 / M5)
                 DrawerSectionTitle("色彩空间与影视风格 (Color Space)")
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     ColorSpacePreset.entries.forEach { cs ->
                         DrawerTile(
                             title = cs.label,
@@ -259,7 +270,12 @@ fun QuickSettingsDrawer(
                     )
                 }
                 Spacer(modifier = Modifier.height(6.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     LutPreset.values().forEach { preset ->
                         DrawerTile(
                             title = preset.label,
@@ -307,7 +323,10 @@ fun QuickSettingsDrawer(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(text = "音量上键 [+] :", color = Color.LightGray, fontSize = 12.sp)
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
                             listOf(VolumeKeyAction.STILL_SHUTTER, VolumeKeyAction.VIDEO_SHUTTER, VolumeKeyAction.MOTION_PHOTO).forEach { act ->
                                 DrawerTile(
                                     title = act.label,
@@ -326,7 +345,10 @@ fun QuickSettingsDrawer(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(text = "音量下键 [-] :", color = Color.LightGray, fontSize = 12.sp)
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
                             listOf(VolumeKeyAction.VIDEO_SHUTTER, VolumeKeyAction.STILL_SHUTTER, VolumeKeyAction.ZOOM_IN).forEach { act ->
                                 DrawerTile(
                                     title = act.label,

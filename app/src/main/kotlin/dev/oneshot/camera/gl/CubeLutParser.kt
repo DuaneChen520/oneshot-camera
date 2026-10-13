@@ -83,16 +83,14 @@ object CubeLutParser {
                 for (rIdx in 0 until size) {
                     val r = rIdx.toFloat() / (size - 1)
 
-                    // Luminance
                     val luma = 0.299f * r + 0.587f * g + 0.114f * b
+                    val shadowWeight = (1.0f - luma).pow(1.5f)
+                    val highlightWeight = luma.pow(1.5f)
 
-                    // Push shadows toward teal/cyan, highlights toward amber/warm orange
-                    val shadowTeal = floatArrayOf(0.1f * luma, 0.4f * luma, 0.6f * luma)
-                    val highlightWarm = floatArrayOf(1.0f * (1f - luma), 0.7f * (1f - luma), 0.3f * (1f - luma))
-
-                    val outR = (r * 1.15f + highlightWarm[0] * 0.25f - shadowTeal[0] * 0.15f).coerceIn(0f, 1f)
-                    val outG = (g * 0.98f + highlightWarm[1] * 0.15f + shadowTeal[1] * 0.15f).coerceIn(0f, 1f)
-                    val outB = (b * 0.85f - highlightWarm[2] * 0.2f + shadowTeal[2] * 0.35f).coerceIn(0f, 1f)
+                    // Cinematic Teal & Orange: Warm Amber highlights, Deep Teal shadows
+                    val outR = (r + 0.15f * highlightWeight * r - 0.10f * shadowWeight * r).coerceIn(0f, 1f)
+                    val outG = (g + 0.05f * highlightWeight * g + 0.05f * shadowWeight * g).coerceIn(0f, 1f)
+                    val outB = (b - 0.12f * highlightWeight * b + 0.18f * shadowWeight * b).coerceIn(0f, 1f)
 
                     byteBuffer.put((outR * 255f).toInt().toByte())
                     byteBuffer.put((outG * 255f).toInt().toByte())
