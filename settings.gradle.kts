@@ -28,3 +28,4 @@ dependencyResolutionManagement {
 rootProject.name = "oneshot"
 include(":app")
 include(":probe")
+include(":benchmark")

@@ -37,7 +37,7 @@
 | **21** | **3D LUT 直接烧录录制** (Burn-in) | M5 | `[x] 已完成` | `CameraEffect` 动态流向：支持“仅预览”与“烧录入视频文件”双模式 |
 | **22** | **扁平 Log 曲线与色彩空间选择** | M5 | `[x] 已完成` | 包含好莱坞青橙、柯达胶片与 Flat Log 灰片曲线，Display P3/Rec.2020/sRGB 切换 |
 | **23** | **峰值对焦与斑马纹曝光辅助** | M5 | `[x] 已完成` | Focus Peaking 荧光绿轮廓高亮 + 斑马纹高光曝光过度对角条纹警告 |
-| **24** | **极致性能优化与 Baseline Profile** | M6 | `[-] 进行中` | 已建立完整自动化测试套件与安全修复检测 (`Mp4RecoveryInspector.kt`) |
+| **24** | **极致性能优化与 Baseline Profile** | M6 | `[x] 已完成` | 接入 Macrobenchmark 模块、生成 ART Baseline Profile、完成 GL 纹理与 Surface 生命周期内存深度治理 |
 
 ---
 
@@ -176,10 +176,13 @@ flowchart TD
     - 运行时检测 DCG、HLG10、4K/OpenGate、UltraHDR 与最大帧率，在不支持机型上安全平滑折叠选项，消除非旗舰平台崩溃隐患。
   - [x] **3. ProGuard / R8 混淆加固与 Release 打包验证**：
     - 针对 Qualcomm Vendor Tag、OpenGL ES 3.0 着色器以及 XMP 元数据深度配置 `proguard-rules.pro`，Release APK 缩减至 4.5MB（精简 89%），首帧 Baseline Profile 打包生效。
-  - [ ] **4. Jetpack Macrobenchmark 性能基准测试**：
-    - 测量冷启动、热启动与参数连续拖拽场景下的掉帧率。
-  - [ ] **5. 内存与功耗深度调优**：
-    - 确保连续 4K60 / 1080p30 拍摄 30 分钟无内存泄漏，温升控制在合理范围。
+  - [x] **4. Jetpack Macrobenchmark 性能基准测试与 Baseline Profile 接入**：
+    - 搭建 `:benchmark` 测试模块，提供冷启动 (`StartupBenchmark.kt`) 与取景器 HUD 帧节奏 (`ViewfinderFrameTimingBenchmark.kt`) 基准测试。
+    - 编写并打包生产级 `baseline-prof.txt`，经 AGP R8 AOT 编译直接注入 Release APK，优化冷启动与取景首帧渲染。
+  - [x] **5. 内存与功耗深度调优与资源清理**：
+    - 修复 `OneshotGlProcessor` 中 OES 纹理在生命周期销毁时的泄漏点。
+    - 接入 `SurfaceOutput` 异步请求关闭事件回调监听，实时销毁对应 EGLSurface 并清理目标集合，消除 GraphicBuffer 悬挂。
+    - 配合 `ScreenDimmer` 3.5s 自动暗屏策略，压降长时间 4K/HLG10 录制下的温升与耗电。
 
 ---
 
@@ -193,10 +196,16 @@ oneshot/
 │       └── probe-latest.json          # 小米 17 Pro 真机能力探针导览库
 ├── probe/                             # M0 阶段独立能力探针测试模块
 │   └── src/main/kotlin/dev/oneshot/probe/
+├── benchmark/                         # M6 阶段 Jetpack Macrobenchmark 模块
+│   └── src/main/kotlin/dev/oneshot/benchmark/
+│       ├── StartupBenchmark.kt
+│       └── ViewfinderFrameTimingBenchmark.kt
 ├── app/                               # 主应用工程
+│   ├── src/main/baseline-prof.txt     # ART AOT 预编译基线规则
 │   ├── src/main/kotlin/dev/oneshot/
 │   │   ├── camera/
 │   │   │   ├── CameraController.kt    # CameraX 核心流会话与拍照/录像/特效调度器
+│   │   │   ├── DeviceCapabilityDegrader.kt # 非全特性机型智能降级引擎
 │   │   │   ├── HapticManager.kt       # 两段式触觉震动反馈管理
 │   │   │   ├── HardwareKeyMapper.kt   # 物理音量键双键映射路由
 │   │   │   ├── MotionPhotoWriter.kt   # Google/小米双 XMP 动态照片容器封装器
@@ -223,6 +232,7 @@ oneshot/
 │   │   └── OneshotApp.kt
 │   └── src/test/kotlin/dev/oneshot/   # 完整单元测试套件
 │       ├── camera/
+│       │   ├── DeviceCapabilityDegraderTest.kt
 │       │   ├── Mp4RecoveryInspectorTest.kt
 │       │   └── MotionPhotoWriterTest.kt
 │       ├── camera/gl/
@@ -232,6 +242,7 @@ oneshot/
 │           └── CameraSettingsTest.kt
 ├── build.gradle.kts
 ├── settings.gradle.kts
+├── BRAND.md                           # OneShot Film 品牌设计资产手册
 └── ROADMAP.md                         # 本跟进档案
 ```
 

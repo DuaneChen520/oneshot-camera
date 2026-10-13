@@ -156,7 +156,20 @@ class OneshotGlProcessor : SurfaceProcessor {
 
     override fun onOutputSurface(surfaceOutput: SurfaceOutput) {
         val surface = surfaceOutput.getSurface({ runnable -> glHandler.post(runnable) }) { event ->
-            // CameraX requests surface output close
+            // CameraX requests surface output close (e.g. lifecycle unbind or configuration change)
+            glHandler.post {
+                val iterator = outputSurfaces.iterator()
+                while (iterator.hasNext()) {
+                    val target = iterator.next()
+                    if (target.surfaceOutput === surfaceOutput) {
+                        if (target.eglSurface != EGL14.EGL_NO_SURFACE) {
+                            EGL14.eglDestroySurface(eglDisplay, target.eglSurface)
+                        }
+                        iterator.remove()
+                        break
+                    }
+                }
+            }
         }
         glHandler.post {
             val surfaceAttribs = intArrayOf(EGL14.EGL_NONE)
@@ -228,6 +241,12 @@ class OneshotGlProcessor : SurfaceProcessor {
             inputSurface?.release()
             inputSurfaceTexture = null
             inputSurface = null
+
+            if (inputOesTextureId != 0) {
+                val textures = intArrayOf(inputOesTextureId)
+                android.opengl.GLES20.glDeleteTextures(1, textures, 0)
+                inputOesTextureId = 0
+            }
 
             renderer?.release()
             renderer = null
