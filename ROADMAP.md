@@ -183,6 +183,14 @@ flowchart TD
     - 修复 `OneshotGlProcessor` 中 OES 纹理在生命周期销毁时的泄漏点。
     - 接入 `SurfaceOutput` 异步请求关闭事件回调监听，实时销毁对应 EGLSurface 并清理目标集合，消除 GraphicBuffer 悬挂。
     - 配合 `ScreenDimmer` 3.5s 自动暗屏策略，压降长时间 4K/HLG10 录制下的温升与耗电。
+  - [x] **6. 品牌视觉系统全量落地与交互重构 (`BRAND.md`)**：
+    - 确立 `OneShotTheme` 视觉代币（曜石黑、柯达琥珀黄、暗房红、钛金冷灰）。
+    - 纯 Compose 渲染取景器光学毛玻璃角标与十字微瞄，双环机械快门与 Tally 录制状态机。
+    - 接入 Android 12+ 复合机械震颤反馈，包体积严格控制在 ~4.33 MB（零膨胀）。
+  - [x] **7. 生产级发布签名流水线建立 (P1 签名闭环)**：
+    - 配置正式 `signingConfigs.release`，支持 V1/V2/V3/V4 多协议防篡改签名。
+    - 生成并绑定 `CN=OneShot Film, OU=Optics Lab` 生产密钥库 `oneshot-release.jks`。
+    - 提供 `keystore.properties.example` 环境变量与本地配置文件覆盖。
 
 ---
 
