@@ -251,7 +251,8 @@ oneshot/
 │       │   └── MotionPhotoWriterTest.kt
 │       ├── camera/gl/
 │       │   ├── CameraEffectApiTest.kt
-│       │   └── CubeLutParserTest.kt
+│       │   ├── CubeLutParserTest.kt
+│       │   └── CustomLutManagerTest.kt
 │       └── data/
 │           └── CameraSettingsTest.kt
 ├── build.gradle.kts
