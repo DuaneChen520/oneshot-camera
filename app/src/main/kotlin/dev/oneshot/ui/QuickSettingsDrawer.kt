@@ -52,8 +52,10 @@ import dev.oneshot.data.FpsPreset
 import dev.oneshot.data.HistogramMode
 import dev.oneshot.data.LutPreset
 import dev.oneshot.data.MotionDurationPreset
+import dev.oneshot.data.PhotoFormat
 import dev.oneshot.data.QualityPreset
 import dev.oneshot.data.VideoBitrateHelper
+import dev.oneshot.data.VideoCodec
 import dev.oneshot.data.VolumeKeyAction
 
 import dev.oneshot.ui.theme.OneShotTheme
@@ -68,6 +70,8 @@ fun QuickSettingsDrawer(
     onSetQuality: (QualityPreset) -> Unit,
     onSetFps: (FpsPreset) -> Unit,
     onSetVideoBitrate: (Int) -> Unit = {},
+    onSetVideoCodec: (VideoCodec) -> Unit = {},
+    onSetPhotoFormat: (PhotoFormat) -> Unit = {},
     onSetDynamicRange: (DynamicRangeMode) -> Unit,
     onToggleDcg: (Boolean) -> Unit,
     onToggleUltraHdr: (Boolean) -> Unit,
@@ -177,6 +181,23 @@ fun QuickSettingsDrawer(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Section 1.5: Photo Storage Format (JPEG / HEIF)
+                DrawerSectionTitle("照片存储格式 (Photo Format)")
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PhotoFormat.entries.forEach { fmt ->
+                        DrawerTile(
+                            title = fmt.label,
+                            isSelected = settings.photoFormat == fmt,
+                            onClick = {
+                                onSetPhotoFormat(fmt)
+                                hapticManager.tick()
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 // Section 2: Video Resolution & Quality Ladder
                 DrawerSectionTitle("视频画质天梯 (Resolution)")
                 Row(
@@ -208,6 +229,23 @@ fun QuickSettingsDrawer(
                             isSelected = settings.fpsPreset == fps,
                             onClick = {
                                 onSetFps(fps)
+                                hapticManager.tick()
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Section 3.2: Video Encoding Codec (HEVC / H.264)
+                DrawerSectionTitle("视频编码格式 (Video Codec)")
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    VideoCodec.entries.forEach { codec ->
+                        DrawerTile(
+                            title = codec.label,
+                            isSelected = settings.videoCodec == codec,
+                            onClick = {
+                                onSetVideoCodec(codec)
                                 hapticManager.tick()
                             }
                         )

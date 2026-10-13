@@ -47,6 +47,16 @@ enum class FpsPreset(val label: String, val targetFps: Int) {
     FPS_120("120 fps 升格", 120),
 }
 
+enum class VideoCodec(val label: String, val mimeType: String) {
+    HEVC("HEVC (H.265 高效)", "video/hevc"),
+    H264("H.264 (AVC 兼容)", "video/avc"),
+}
+
+enum class PhotoFormat(val label: String, val extension: String, val mimeType: String) {
+    JPEG("JPEG 标准", ".jpg", "image/jpeg"),
+    HEIF("HEIF 高效 (HEIC)", ".heic", "image/heif"),
+}
+
 enum class ColorSpacePreset(val label: String) {
     SRGB("sRGB (Rec.709)"),
     DISPLAY_P3("Display P3 广色域"),
@@ -95,6 +105,8 @@ data class CameraSettings(
     val isoValue: Int = 100,
     val fpsPreset: FpsPreset = FpsPreset.FPS_30,
     val videoBitrateMbps: Int = 0, // 0 = AUTO (System/CameraX default), >0 = Target Mbps (10..200)
+    val videoCodec: VideoCodec = VideoCodec.HEVC,
+    val photoFormat: PhotoFormat = PhotoFormat.JPEG,
     val colorSpace: ColorSpacePreset = ColorSpacePreset.REC_2020,
     val lutEnabled: Boolean = false,
     val lutPreset: LutPreset = LutPreset.TEAL_AND_ORANGE,

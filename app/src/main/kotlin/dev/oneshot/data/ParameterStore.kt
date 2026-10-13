@@ -54,6 +54,8 @@ class ParameterStore(private val context: Context) {
                 val iso = prefs[KEY_ISO] ?: 100
                 val fps = prefs[KEY_FPS] ?: FpsPreset.FPS_30.name
                 val videoBitrate = prefs[KEY_VIDEO_BITRATE_MBPS] ?: 0
+                val videoCodecName = prefs[KEY_VIDEO_CODEC] ?: VideoCodec.HEVC.name
+                val photoFormatName = prefs[KEY_PHOTO_FORMAT] ?: PhotoFormat.JPEG.name
                 val cs = prefs[KEY_COLOR_SPACE] ?: ColorSpacePreset.REC_2020.name
                 val lut = prefs[KEY_LUT] ?: false
                 val lutPresetName = prefs[KEY_LUT_PRESET] ?: LutPreset.TEAL_AND_ORANGE.name
@@ -96,6 +98,8 @@ class ParameterStore(private val context: Context) {
                     isoValue = iso,
                     fpsPreset = runCatching { FpsPreset.valueOf(fps) }.getOrDefault(FpsPreset.FPS_30),
                     videoBitrateMbps = videoBitrate,
+                    videoCodec = runCatching { VideoCodec.valueOf(videoCodecName) }.getOrDefault(VideoCodec.HEVC),
+                    photoFormat = runCatching { PhotoFormat.valueOf(photoFormatName) }.getOrDefault(PhotoFormat.JPEG),
                     colorSpace = runCatching { ColorSpacePreset.valueOf(cs) }.getOrDefault(ColorSpacePreset.REC_2020),
                     lutEnabled = lut,
                     lutPreset = runCatching { LutPreset.valueOf(lutPresetName) }.getOrDefault(LutPreset.TEAL_AND_ORANGE),
@@ -191,6 +195,14 @@ class ParameterStore(private val context: Context) {
 
     fun setVideoBitrateMbps(mbps: Int) {
         scope.launch { context.dataStore.edit { it[KEY_VIDEO_BITRATE_MBPS] = mbps } }
+    }
+
+    fun setVideoCodec(codec: VideoCodec) {
+        scope.launch { context.dataStore.edit { it[KEY_VIDEO_CODEC] = codec.name } }
+    }
+
+    fun setPhotoFormat(format: PhotoFormat) {
+        scope.launch { context.dataStore.edit { it[KEY_PHOTO_FORMAT] = format.name } }
     }
 
     fun setColorSpace(cs: ColorSpacePreset) {
@@ -320,6 +332,8 @@ class ParameterStore(private val context: Context) {
         val KEY_ISO = intPreferencesKey("iso_value")
         val KEY_FPS = stringPreferencesKey("fps_preset")
         val KEY_VIDEO_BITRATE_MBPS = intPreferencesKey("video_bitrate_mbps")
+        val KEY_VIDEO_CODEC = stringPreferencesKey("video_codec")
+        val KEY_PHOTO_FORMAT = stringPreferencesKey("photo_format")
         val KEY_COLOR_SPACE = stringPreferencesKey("color_space")
         val KEY_LUT = booleanPreferencesKey("lut_enabled")
         val KEY_LUT_PRESET = stringPreferencesKey("lut_preset")

@@ -5,6 +5,9 @@ import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import androidx.heifwriter.HeifWriter
 import android.graphics.PointF
 import android.hardware.camera2.CaptureRequest
 import android.net.Uri
@@ -13,6 +16,9 @@ import android.os.SystemClock
 import android.provider.MediaStore
 import android.util.Range
 import android.util.Size
+import dev.oneshot.data.PhotoFormat
+import dev.oneshot.data.VideoCodec
+import kotlinx.coroutines.asExecutor
 import androidx.camera.camera2.interop.Camera2CameraControl
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.CaptureRequestOptions
@@ -133,6 +139,7 @@ class CameraController(
                         prev.dynamicRange != settings.dynamicRange ||
                         prev.quality != settings.quality ||
                         prev.videoBitrateMbps != settings.videoBitrateMbps ||
+                        prev.videoCodec != settings.videoCodec ||
                         prev.dcgHdrEnabled != settings.dcgHdrEnabled ||
                         prev.ultraHdrEnabled != settings.ultraHdrEnabled ||
                         prev.lutBurnIn != settings.lutBurnIn
@@ -209,6 +216,15 @@ class CameraController(
         val recorderBuilder = Recorder.Builder()
             .setAspectRatio(effectiveSettings.aspectMode.cameraXRatio)
             .setExecutor(mainExecutor)
+
+        val targetVideoMime = if (effectiveSettings.dynamicRange == DynamicRangeMode.HLG10) {
+            "video/hevc" // 10-bit HLG HDR 强制采用 HEVC 硬件编码器
+        } else {
+            effectiveSettings.videoCodec.mimeType
+        }
+        runCatching {
+            recorderBuilder.setVideoMimeType(targetVideoMime)
+        }
 
         if (effectiveSettings.videoBitrateMbps > 0) {
             recorderBuilder.setTargetVideoEncodingBitRate(effectiveSettings.videoBitrateMbps * 1_000_000)
@@ -493,6 +509,9 @@ class CameraController(
         val imageCapture = activeImageCapture ?: return
         if (_recordingStatus.value.isStillCapturing || _recordingStatus.value.isMotionCapturing) return
 
+        val currentSettings = parameterStore.settings.value
+        val isHeif = currentSettings.photoFormat == PhotoFormat.HEIF
+
         hapticManager.shutterClick()
         _recordingStatus.value = _recordingStatus.value.copy(
             isStillCapturing = true,
@@ -500,47 +519,130 @@ class CameraController(
         )
 
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        val displayName = "IMG_${stamp}.jpg"
 
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/OneShot")
-            }
-        }
+        if (isHeif) {
+            val displayName = "IMG_${stamp}.heic"
+            val tempStillFile = File(context.cacheDir, "temp_still_${stamp}.jpg")
+            val tempHeifFile = File(context.cacheDir, "temp_heif_${stamp}.heic")
+            val tempOptions = ImageCapture.OutputFileOptions.Builder(tempStillFile).build()
 
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(
-            context.contentResolver,
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            contentValues
-        ).build()
+            imageCapture.takePicture(
+                tempOptions,
+                Dispatchers.IO.asExecutor(),
+                object : ImageCapture.OnImageSavedCallback {
+                    override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                        runCatching {
+                            val bitmap = BitmapFactory.decodeFile(tempStillFile.absolutePath)
+                                ?: error("解码拍照临时帧失败")
 
-        imageCapture.takePicture(
-            outputOptions,
-            mainExecutor,
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                    outputFileResults.savedUri?.let { uri ->
-                        galleryThumbnailManager.updateWithCapturedUri(uri, false, displayName)
+                            val writer = HeifWriter.Builder(
+                                tempHeifFile.absolutePath,
+                                bitmap.width,
+                                bitmap.height,
+                                HeifWriter.INPUT_MODE_BITMAP
+                            ).setQuality(95).setMaxImages(1).build()
+
+                            writer.start()
+                            writer.addBitmap(bitmap)
+                            writer.stop(5000L)
+                            writer.close()
+                            bitmap.recycle()
+                            tempStillFile.delete()
+
+                            val contentValues = ContentValues().apply {
+                                put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+                                put(MediaStore.MediaColumns.MIME_TYPE, "image/heif")
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                    put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/OneShot")
+                                }
+                            }
+
+                            val resolver = context.contentResolver
+                            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                                ?: error("创建 MediaStore HEIF 记录失败")
+
+                            resolver.openOutputStream(uri)?.use { out ->
+                                tempHeifFile.inputStream().use { it.copyTo(out) }
+                            } ?: error("写入 HEIF 数据流失败")
+
+                            tempHeifFile.delete()
+
+                            mainExecutor.execute {
+                                galleryThumbnailManager.updateWithCapturedUri(uri, false, displayName)
+                                _recordingStatus.value = _recordingStatus.value.copy(
+                                    isStillCapturing = false,
+                                    savedUri = uri,
+                                    lastMediaType = CapturedMediaType.PHOTO,
+                                    userNotice = "HEIF 照片已保存至相册 (DCIM/OneShot)",
+                                    lastError = null,
+                                )
+                            }
+                        }.onFailure { ex ->
+                            tempStillFile.delete()
+                            tempHeifFile.delete()
+                            mainExecutor.execute {
+                                _recordingStatus.value = _recordingStatus.value.copy(
+                                    isStillCapturing = false,
+                                    lastError = "HEIF 编码失败: ${ex.message}",
+                                )
+                            }
+                        }
                     }
-                    _recordingStatus.value = _recordingStatus.value.copy(
-                        isStillCapturing = false,
-                        savedUri = outputFileResults.savedUri,
-                        lastMediaType = CapturedMediaType.PHOTO,
-                        userNotice = "照片已保存至相册 (DCIM/OneShot)",
-                        lastError = null,
-                    )
-                }
 
-                override fun onError(exception: ImageCaptureException) {
-                    _recordingStatus.value = _recordingStatus.value.copy(
-                        isStillCapturing = false,
-                        lastError = "拍照失败: ${exception.message}",
-                    )
+                    override fun onError(exception: ImageCaptureException) {
+                        tempStillFile.delete()
+                        tempHeifFile.delete()
+                        mainExecutor.execute {
+                            _recordingStatus.value = _recordingStatus.value.copy(
+                                isStillCapturing = false,
+                                lastError = "拍照失败: ${exception.message}",
+                            )
+                        }
+                    }
+                }
+            )
+        } else {
+            val displayName = "IMG_${stamp}.jpg"
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/OneShot")
                 }
             }
-        )
+
+            val outputOptions = ImageCapture.OutputFileOptions.Builder(
+                context.contentResolver,
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                contentValues
+            ).build()
+
+            imageCapture.takePicture(
+                outputOptions,
+                mainExecutor,
+                object : ImageCapture.OnImageSavedCallback {
+                    override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                        outputFileResults.savedUri?.let { uri ->
+                            galleryThumbnailManager.updateWithCapturedUri(uri, false, displayName)
+                        }
+                        _recordingStatus.value = _recordingStatus.value.copy(
+                            isStillCapturing = false,
+                            savedUri = outputFileResults.savedUri,
+                            lastMediaType = CapturedMediaType.PHOTO,
+                            userNotice = "照片已保存至相册 (DCIM/OneShot)",
+                            lastError = null,
+                        )
+                    }
+
+                    override fun onError(exception: ImageCaptureException) {
+                        _recordingStatus.value = _recordingStatus.value.copy(
+                            isStillCapturing = false,
+                            lastError = "拍照失败: ${exception.message}",
+                        )
+                    }
+                }
+            )
+        }
     }
 
     // =========================================================================

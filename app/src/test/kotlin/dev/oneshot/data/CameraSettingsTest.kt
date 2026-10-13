@@ -27,6 +27,8 @@ class CameraSettingsTest {
         assertTrue(settings.isAutoIso)
         assertEquals(FpsPreset.FPS_30, settings.fpsPreset)
         assertEquals(0, settings.videoBitrateMbps)
+        assertEquals(VideoCodec.HEVC, settings.videoCodec)
+        assertEquals(PhotoFormat.JPEG, settings.photoFormat)
         assertEquals(ColorSpacePreset.REC_2020, settings.colorSpace)
         assertFalse(settings.lutEnabled)
         assertEquals(LutPreset.TEAL_AND_ORANGE, settings.lutPreset)
@@ -66,6 +68,15 @@ class CameraSettingsTest {
         assertTrue(VideoBitrateHelper.estimateStoragePerMinute(0).contains("250~350"))
         assertEquals("约 90 MB/分", VideoBitrateHelper.estimateStoragePerMinute(12))
         assertEquals("约 750 MB/分", VideoBitrateHelper.estimateStoragePerMinute(100))
+    }
+
+    @Test
+    fun testVideoCodecAndPhotoFormatEnums() {
+        assertEquals("video/hevc", VideoCodec.HEVC.mimeType)
+        assertEquals("video/avc", VideoCodec.H264.mimeType)
+        assertEquals(".jpg", PhotoFormat.JPEG.extension)
+        assertEquals(".heic", PhotoFormat.HEIF.extension)
+        assertEquals("image/heif", PhotoFormat.HEIF.mimeType)
     }
 
     @Test

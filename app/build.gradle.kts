@@ -15,8 +15,8 @@ android {
         applicationId = "dev.oneshot"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 3
+        versionName = "0.1.2"
     }
 
     signingConfigs {
@@ -121,6 +121,7 @@ dependencies {
     implementation(libs.camera.video)
     implementation(libs.camera.view)
     implementation(libs.camera.compose)
+    implementation("androidx.heifwriter:heifwriter:1.1.0-beta01")
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
