@@ -56,6 +56,7 @@ import dev.oneshot.camera.HapticManager
 import dev.oneshot.data.AspectRatioMode
 import dev.oneshot.data.DynamicRangeMode
 import dev.oneshot.data.FpsPreset
+import dev.oneshot.data.HistogramMode
 import dev.oneshot.data.LensFacingMode
 import dev.oneshot.data.CustomLut
 import dev.oneshot.data.ParameterStore
@@ -170,11 +171,14 @@ fun ShootingScreen(
     val focusPoint by cameraController.focusPoint.collectAsState()
     val recordingStatus by cameraController.recordingStatus.collectAsState()
     val capabilities by cameraController.capabilities.collectAsState()
+    val histogramData by cameraController.histogramData.collectAsState()
+    val latestMedia by cameraController.latestMedia.collectAsState()
 
     var previewViewRef by remember { mutableStateOf<PreviewView?>(null) }
     var isQMenuOpen by remember { mutableStateOf(false) }
     var isAbgmDialogOpen by remember { mutableStateOf(false) }
     var isShutterFlashVisible by remember { mutableStateOf(false) }
+    var isQuickReviewOpen by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
     var lutToDelete by remember { mutableStateOf<CustomLut?>(null) }
@@ -309,6 +313,24 @@ fun ShootingScreen(
                     isRecording = recordingStatus.isRecording,
                     dimDelayMillis = 3500L
                 )
+
+                // Live Optical Histogram & Waveform Scope (Top-Right of Viewfinder)
+                LiveHistogramScope(
+                    mode = settings.histogramMode,
+                    data = histogramData,
+                    onCycleMode = {
+                        val nextMode = when (settings.histogramMode) {
+                            HistogramMode.OFF -> HistogramMode.LUMA
+                            HistogramMode.LUMA -> HistogramMode.RGB
+                            HistogramMode.RGB -> HistogramMode.OFF
+                        }
+                        parameterStore.setHistogramMode(nextMode)
+                        hapticManager.tick()
+                    },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 10.dp, end = 12.dp)
+                )
             }
         }
 
@@ -383,20 +405,26 @@ fun ShootingScreen(
                     hapticManager.tick()
                 },
                 onOpenGallery = {
-                    runCatching {
-                        val intent = if (recordingStatus.savedUri != null) {
-                            Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(recordingStatus.savedUri, "*/*")
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    hapticManager.tick()
+                    if (latestMedia != null) {
+                        isQuickReviewOpen = true
+                    } else {
+                        runCatching {
+                            val intent = if (recordingStatus.savedUri != null) {
+                                Intent(Intent.ACTION_VIEW).apply {
+                                    setDataAndType(recordingStatus.savedUri, "*/*")
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                            } else {
+                                Intent(Intent.ACTION_VIEW).apply {
+                                    setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*")
+                                }
                             }
-                        } else {
-                            Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*")
-                            }
+                            context.startActivity(intent)
                         }
-                        context.startActivity(intent)
                     }
-                }
+                },
+                latestMedia = latestMedia
             )
         }
 
@@ -424,6 +452,7 @@ fun ShootingScreen(
             onToggleLutBurnIn = { parameterStore.setLutBurnIn(it) },
             onToggleFocusPeaking = { parameterStore.setFocusPeaking(it) },
             onToggleZebraPattern = { parameterStore.setZebraPattern(it) },
+            onSetHistogramMode = { parameterStore.setHistogramMode(it) },
             hapticManager = hapticManager,
             modifier = Modifier.align(Alignment.TopCenter)
         )
@@ -484,6 +513,25 @@ fun ShootingScreen(
                     }
                 },
                 containerColor = OneShotTheme.ObsidianBlack,
+            )
+        }
+
+        // 7. Overlays: Quick Review Lightbox (Optical Ground Glass Darkroom Viewer)
+        if (isQuickReviewOpen && latestMedia != null) {
+            QuickReviewLightbox(
+                media = latestMedia,
+                onDismiss = { isQuickReviewOpen = false },
+                onOpenSystemGallery = {
+                    runCatching {
+                        val item = latestMedia ?: return@runCatching
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(item.uri, if (item.isVideo) "video/*" else "image/*")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(intent)
+                    }
+                },
+                hapticManager = hapticManager
             )
         }
     }

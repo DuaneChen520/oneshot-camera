@@ -113,6 +113,13 @@ class CameraController(
     private val _capabilities = MutableStateFlow(capabilityDegrader.detectCapabilities())
     val capabilities: StateFlow<DeviceCapabilities> = _capabilities.asStateFlow()
 
+    val galleryThumbnailManager = GalleryThumbnailManager(context)
+    val latestMedia: StateFlow<MediaThumbnail?> = galleryThumbnailManager.latestMedia
+
+    private val _emptyHistogram = MutableStateFlow<dev.oneshot.camera.gl.HistogramData?>(null)
+    val histogramData: StateFlow<dev.oneshot.camera.gl.HistogramData?>
+        get() = glProcessor?.histogramData ?: _emptyHistogram
+
     init {
         scope.launch {
             parameterStore.settings.collectLatest { settings ->
@@ -228,7 +235,10 @@ class CameraController(
         }
 
         // Bind use cases to lifecycle with graceful fallback
-        val hasEffect = effectiveSettings.lutEnabled || effectiveSettings.focusPeakingEnabled || effectiveSettings.zebraPatternEnabled
+        val hasEffect = effectiveSettings.lutEnabled ||
+                        effectiveSettings.focusPeakingEnabled ||
+                        effectiveSettings.zebraPatternEnabled ||
+                        effectiveSettings.histogramMode != dev.oneshot.data.HistogramMode.OFF
         if (hasEffect) {
             val processor = glProcessor ?: OneshotGlProcessor(customLutManager).also { glProcessor = it }
             processor.updateSettings(effectiveSettings)
@@ -446,6 +456,9 @@ class CameraController(
             mainExecutor,
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                    outputFileResults.savedUri?.let { uri ->
+                        galleryThumbnailManager.updateWithCapturedUri(uri, false, displayName)
+                    }
                     _recordingStatus.value = _recordingStatus.value.copy(
                         isStillCapturing = false,
                         savedUri = outputFileResults.savedUri,
@@ -543,6 +556,7 @@ class CameraController(
 
                 if (motionUri != null) {
                     hapticManager.motionPhotoCaptured()
+                    galleryThumbnailManager.updateWithCapturedUri(motionUri, false, "IMG_${stamp}_MOTION.jpg")
                     _recordingStatus.value = _recordingStatus.value.copy(
                         isMotionCapturing = false,
                         savedUri = motionUri,
@@ -626,6 +640,9 @@ class CameraController(
                         RecordingForegroundService.stop(context)
                         val uri = event.outputResults.outputUri
                         val error = if (event.hasError()) "录制异常 (code=${event.error})" else null
+                        if (!event.hasError() && uri != Uri.EMPTY) {
+                            galleryThumbnailManager.updateWithCapturedUri(uri, true)
+                        }
                         _recordingStatus.value = _recordingStatus.value.copy(
                             isRecording = false,
                             isPaused = false,

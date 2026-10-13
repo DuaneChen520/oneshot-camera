@@ -199,6 +199,23 @@ flowchart TD
 
 ---
 
+### M7: 专业摄影监看示波器、相册缩略图回放与进阶色彩调优（当前阶段 🚧）
+* **目标**：打造微单级专业监看辅助体系与无缝作品回放体验，丰富色彩可塑性。
+* **详细待办任务**：
+  - [ ] **1. LUT 滤镜强度实时混色滑杆 (0% ~ 100%)**：
+    - 在 GL 片元着色器中注入 `uLutIntensity`，实现原始信号与 3D LUT 采样值的 `mix(orig, lut, intensity)` 平滑过渡。
+    - 在 Q 快速设定抽屉与 HUD 中提供步进触觉滑杆，支持精细把控胶片浓度。
+  - [x] **2. 专业摄影示波器组件（实时 RGB / 亮度直方图）**：
+    - OpenGL ES 3.0 超低开销离屏 FBO 采样与 64-bin 频数统计，实时计算阴影、中间调、高光及均值。
+    - 暗部死黑欠曝 (Shadow clipping) 与高光溢出过曝 (Highlight clipping) 警示。
+    - Compose 纯代码渲染光学毛玻璃示波器小窗 (`LiveHistogramScope.kt`)，支持 Luma 亮度波形与 RGB 三原色通道快速切换。
+  - [x] **3. 拍摄相册快捷缩略图与快速回放**：
+    - 启动时异步检索 MediaStore 最新样张/视频第一帧，生成极速微缩图 (`GalleryThumbnailManager.kt`)。
+    - 拍照/动态照片/录像完成后毫秒级更新快门栏左侧底片缩略图。
+    - 点击调起轻量级暗房内置快速回放器 (`QuickReviewLightbox.kt`) 及一键调起系统相册。
+
+---
+
 ## 三、 当前文件架构分布与模块索引
 
 ```
@@ -219,6 +236,7 @@ oneshot/
 │   │   ├── camera/
 │   │   │   ├── CameraController.kt    # CameraX 核心流会话与拍照/录像/特效调度器
 │   │   │   ├── DeviceCapabilityDegrader.kt # 非全特性机型智能降级引擎
+│   │   │   ├── GalleryThumbnailManager.kt # 异步 MediaStore 底片检索与极速缩略图调度
 │   │   │   ├── HapticManager.kt       # 两段式触觉震动反馈管理
 │   │   │   ├── HardwareKeyMapper.kt   # 物理音量键双键映射路由
 │   │   │   ├── MotionPhotoWriter.kt   # Google/小米双 XMP 动态照片容器封装器
@@ -229,6 +247,7 @@ oneshot/
 │   │   │       ├── CubeLutParser.kt   # .cube 3D LUT 解析与青橙/胶片/Flat Log 生成器
 │   │   │       ├── CubeLutRenderer.kt # OpenGL ES 3.0 3D 纹理与斑马纹/峰值对焦着色器
 │   │   │       ├── CustomLutManager.kt# 用户自定义 .cube 胶卷导入、缓存与持久化管理器
+│   │   │       ├── HistogramData.kt   # 64-bin 实时直方图数据模型与高效像素采样引擎
 │   │   │       └── OneshotGlProcessor.kt # SurfaceProcessor 与 CameraEffect 渲染管线
 │   │   ├── data/
 │   │   │   ├── CameraParameters.kt    # 参数枚举与默认配置 (画幅/HDR/LUT/音量键等)
@@ -236,7 +255,9 @@ oneshot/
 │   │   ├── ui/
 │   │   │   ├── AbgmTintPad.kt         # A-B / G-M 二维触摸白平衡调色盘
 │   │   │   ├── FocusIndicator.kt      # 触控对焦与测光指示环
+│   │   │   ├── LiveHistogramScope.kt  # 实时 Luma / RGB 示波器直方图毛玻璃小窗
 │   │   │   ├── ProHud.kt              # 就地滑动调节与长按恢复 AUTO 的专业 HUD
+│   │   │   ├── QuickReviewLightbox.kt # 拍完即看暗房风格快速回放弹层
 │   │   │   ├── QuickSettingsDrawer.kt # 下滑毛玻璃 Q 快速设定抽屉
 │   │   │   ├── ScreenDimmer.kt        # 录制防发热降功耗 OLED 自动调暗蒙层
 │   │   │   ├── ShootingScreen.kt      # 主拍摄 Compose 容器
@@ -252,7 +273,8 @@ oneshot/
 │       ├── camera/gl/
 │       │   ├── CameraEffectApiTest.kt
 │       │   ├── CubeLutParserTest.kt
-│       │   └── CustomLutManagerTest.kt
+│       │   ├── CustomLutManagerTest.kt
+│       │   └── HistogramDataTest.kt
 │       └── data/
 │           └── CameraSettingsTest.kt
 ├── build.gradle.kts

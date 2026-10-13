@@ -41,6 +41,7 @@ import dev.oneshot.data.ColorSpacePreset
 import dev.oneshot.data.CustomLut
 import dev.oneshot.data.DynamicRangeMode
 import dev.oneshot.data.FpsPreset
+import dev.oneshot.data.HistogramMode
 import dev.oneshot.data.LutPreset
 import dev.oneshot.data.MotionDurationPreset
 import dev.oneshot.data.QualityPreset
@@ -72,6 +73,7 @@ fun QuickSettingsDrawer(
     onToggleLutBurnIn: (Boolean) -> Unit,
     onToggleFocusPeaking: (Boolean) -> Unit,
     onToggleZebraPattern: (Boolean) -> Unit,
+    onSetHistogramMode: (HistogramMode) -> Unit = {},
     hapticManager: HapticManager,
     modifier: Modifier = Modifier,
 ) {
@@ -365,8 +367,8 @@ fun QuickSettingsDrawer(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Section 8: Professional Visual Assist Tools (M5 Focus Peaking & Zebra)
-                DrawerSectionTitle("专业摄影辅助工具 (Focus Peaking & Zebra Pattern)")
+                // Section 8: Professional Visual Assist Tools (Focus Peaking · Zebra · Scope)
+                DrawerSectionTitle("专业摄影辅助工具 (Focus Peaking · Zebra · Scope)")
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     DrawerTile(
                         title = if (settings.focusPeakingEnabled) "峰值对焦: 开" else "峰值对焦: 关",
@@ -384,6 +386,33 @@ fun QuickSettingsDrawer(
                             hapticManager.tick()
                         }
                     )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "实时示波器 / 直方图 :", color = OneShotTheme.TitaniumGray, fontSize = 12.sp)
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        HistogramMode.values().forEach { mode ->
+                            DrawerTile(
+                                title = when (mode) {
+                                    HistogramMode.OFF -> "关闭"
+                                    HistogramMode.LUMA -> "亮度直方图"
+                                    HistogramMode.RGB -> "RGB 分离波形"
+                                },
+                                isSelected = settings.histogramMode == mode,
+                                onClick = {
+                                    onSetHistogramMode(mode)
+                                    hapticManager.tick()
+                                }
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))

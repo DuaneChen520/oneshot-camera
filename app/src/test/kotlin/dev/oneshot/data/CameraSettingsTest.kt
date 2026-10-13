@@ -34,6 +34,7 @@ class CameraSettingsTest {
         assertFalse(settings.lutBurnIn)
         assertFalse(settings.focusPeakingEnabled)
         assertFalse(settings.zebraPatternEnabled)
+        assertEquals(HistogramMode.OFF, settings.histogramMode)
     }
 
     @Test

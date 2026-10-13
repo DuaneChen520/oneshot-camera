@@ -38,8 +38,13 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.oneshot.camera.MediaThumbnail
 import dev.oneshot.camera.RecordingStatus
 import dev.oneshot.ui.theme.OneShotTheme
 
@@ -52,6 +57,7 @@ fun ShutterCluster(
     onStopRecording: () -> Unit,
     onFlipCamera: () -> Unit,
     onOpenGallery: () -> Unit,
+    latestMedia: MediaThumbnail? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -143,25 +149,53 @@ fun ShutterCluster(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Far Left: Film Gallery Button (Machined Chassis)
+            // Far Left: Film Gallery Button (Machined Chassis with live thumbnail)
             Box(
                 modifier = Modifier
-                    .size(46.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
                     .background(OneShotTheme.ChassisDark)
-                    .border(width = 1.dp, color = OneShotTheme.TitaniumBorder, shape = CircleShape)
+                    .border(
+                        width = if (latestMedia?.bitmap != null) 1.5.dp else 1.dp,
+                        color = if (latestMedia?.bitmap != null) OneShotTheme.AmberGrain else OneShotTheme.TitaniumBorder,
+                        shape = CircleShape
+                    )
                     .clickable(
                         enabled = !status.isRecording && !status.isMotionCapturing,
                         onClick = onOpenGallery
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "底片",
-                    color = OneShotTheme.AmberGrain,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                if (latestMedia?.bitmap != null) {
+                    Image(
+                        bitmap = latestMedia.bitmap.asImageBitmap(),
+                        contentDescription = "最近底片",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    if (latestMedia.isVideo) {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clip(CircleShape)
+                                .background(Color(0x99000000)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "▶",
+                                color = OneShotTheme.FilmSilver,
+                                fontSize = 9.sp
+                            )
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "底片",
+                        color = OneShotTheme.AmberGrain,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             // Left Shutter: Motion Photo (Live Emulsion Shutter)

@@ -15,9 +15,16 @@ import androidx.camera.core.CameraEffect
 import androidx.camera.core.SurfaceOutput
 import androidx.camera.core.SurfaceProcessor
 import androidx.camera.core.SurfaceRequest
+import android.opengl.GLES20
 import androidx.core.util.Consumer
 import dev.oneshot.data.CameraSettings
+import dev.oneshot.data.HistogramMode
 import dev.oneshot.data.LutPreset
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.concurrent.Executor
 
 class OneshotCameraEffect(
@@ -55,6 +62,16 @@ class OneshotGlProcessor(
     @Volatile private var currentCustomLutId: String? = null
     @Volatile private var isPeakingEnabled: Boolean = false
     @Volatile private var isZebraEnabled: Boolean = false
+    @Volatile private var histogramMode: HistogramMode = HistogramMode.OFF
+
+    // Real-time histogram state & sampling buffers
+    private val _histogramData = MutableStateFlow<HistogramData?>(null)
+    val histogramData: StateFlow<HistogramData?> = _histogramData.asStateFlow()
+
+    private val histFbo = IntArray(1)
+    private val histTexture = IntArray(1)
+    private val histBuffer = ByteBuffer.allocateDirect(HIST_SAMPLE_WIDTH * HIST_SAMPLE_HEIGHT * 4).order(ByteOrder.nativeOrder())
+    private var lastHistSampleTimeMs = 0L
 
     private class OutputTarget(
         val surfaceOutput: SurfaceOutput,
@@ -80,6 +97,11 @@ class OneshotGlProcessor(
         currentCustomLutId = settings.selectedCustomLutId
         isPeakingEnabled = settings.focusPeakingEnabled
         isZebraEnabled = settings.zebraPatternEnabled
+        val oldHistMode = histogramMode
+        histogramMode = settings.histogramMode
+        if (oldHistMode != HistogramMode.OFF && histogramMode == HistogramMode.OFF) {
+            _histogramData.value = null
+        }
 
         val lutChanged = oldLutEnabled != isLutEnabled ||
                          oldPreset != currentPreset ||
@@ -149,6 +171,24 @@ class OneshotGlProcessor(
         inputOesTextureId = rend.createOesTexture()
         rend.loadLut(CubeLutParser.createTealAndOrange())
         renderer = rend
+
+        // Initialize 64x36 offscreen FBO for downsampled real-time histogram sampling
+        GLES20.glGenFramebuffers(1, histFbo, 0)
+        GLES20.glGenTextures(1, histTexture, 0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, histTexture[0])
+        GLES20.glTexImage2D(
+            GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA,
+            HIST_SAMPLE_WIDTH, HIST_SAMPLE_HEIGHT, 0,
+            GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null
+        )
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, histFbo[0])
+        GLES20.glFramebufferTexture2D(
+            GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0,
+            GLES20.GL_TEXTURE_2D, histTexture[0], 0
+        )
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
     }
 
     override fun onInputSurface(surfaceRequest: SurfaceRequest) {
@@ -197,16 +237,24 @@ class OneshotGlProcessor(
             }
         }
         glHandler.post {
+            if (!surface.isValid) {
+                return@post
+            }
             val surfaceAttribs = intArrayOf(EGL14.EGL_NONE)
-            val eglSurface = EGL14.eglCreateWindowSurface(eglDisplay, eglConfig, surface, surfaceAttribs, 0)
-            val target = OutputTarget(
-                surfaceOutput = surfaceOutput,
-                surface = surface,
-                eglSurface = eglSurface,
-                width = surfaceOutput.size.width,
-                height = surfaceOutput.size.height
-            )
-            outputSurfaces.add(target)
+            val eglSurface = runCatching {
+                EGL14.eglCreateWindowSurface(eglDisplay, eglConfig, surface, surfaceAttribs, 0)
+            }.getOrDefault(EGL14.EGL_NO_SURFACE)
+
+            if (eglSurface != EGL14.EGL_NO_SURFACE) {
+                val target = OutputTarget(
+                    surfaceOutput = surfaceOutput,
+                    surface = surface,
+                    eglSurface = eglSurface,
+                    width = surfaceOutput.size.width,
+                    height = surfaceOutput.size.height
+                )
+                outputSurfaces.add(target)
+            }
         }
     }
 
@@ -222,7 +270,7 @@ class OneshotGlProcessor(
         val targetsToRemove = mutableListOf<OutputTarget>()
 
         for (target in outputSurfaces) {
-            if (target.eglSurface == EGL14.EGL_NO_SURFACE) continue
+            if (target.eglSurface == EGL14.EGL_NO_SURFACE || !target.surface.isValid) continue
 
             EGL14.eglMakeCurrent(eglDisplay, target.eglSurface, target.eglSurface, eglContext)
 
@@ -252,6 +300,40 @@ class OneshotGlProcessor(
                 outputSurfaces.remove(target)
             }
         }
+
+        // Real-time histogram sampling (~13 fps, ultra-low GPU overhead)
+        if (histogramMode != HistogramMode.OFF && histFbo[0] != 0 && outputSurfaces.isNotEmpty()) {
+            val now = SystemClock.uptimeMillis()
+            if (now - lastHistSampleTimeMs >= 75L) {
+                lastHistSampleTimeMs = now
+                val activeTarget = outputSurfaces.firstOrNull { it.eglSurface != EGL14.EGL_NO_SURFACE }
+                if (activeTarget != null) {
+                    GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, histFbo[0])
+                    activeTarget.surfaceOutput.updateTransformMatrix(combinedMatrix, texMatrix)
+                    rend.drawFrame(
+                        oesTextureId = inputOesTextureId,
+                        texMatrix = combinedMatrix,
+                        viewportWidth = HIST_SAMPLE_WIDTH,
+                        viewportHeight = HIST_SAMPLE_HEIGHT,
+                        lutEnabled = isLutEnabled,
+                        peakingEnabled = false,
+                        zebraEnabled = false,
+                        timeSeconds = timeSeconds
+                    )
+                    histBuffer.rewind()
+                    GLES20.glReadPixels(
+                        0, 0, HIST_SAMPLE_WIDTH, HIST_SAMPLE_HEIGHT,
+                        GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, histBuffer
+                    )
+                    GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+
+                    histBuffer.rewind()
+                    _histogramData.value = HistogramData.computeFromRgba(
+                        HIST_SAMPLE_WIDTH, HIST_SAMPLE_HEIGHT, histBuffer
+                    )
+                }
+            }
+        }
     }
 
     fun release() {
@@ -266,6 +348,16 @@ class OneshotGlProcessor(
             inputSurface?.release()
             inputSurfaceTexture = null
             inputSurface = null
+
+            if (histFbo[0] != 0) {
+                GLES20.glDeleteFramebuffers(1, histFbo, 0)
+                histFbo[0] = 0
+            }
+            if (histTexture[0] != 0) {
+                GLES20.glDeleteTextures(1, histTexture, 0)
+                histTexture[0] = 0
+            }
+            _histogramData.value = null
 
             if (inputOesTextureId != 0) {
                 val textures = intArrayOf(inputOesTextureId)
@@ -291,5 +383,10 @@ class OneshotGlProcessor(
 
             glThread.quitSafely()
         }
+    }
+
+    companion object {
+        const val HIST_SAMPLE_WIDTH = 64
+        const val HIST_SAMPLE_HEIGHT = 36
     }
 }

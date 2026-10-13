@@ -64,6 +64,7 @@ class ParameterStore(private val context: Context) {
                 val lutBurn = prefs[KEY_LUT_BURN] ?: false
                 val peaking = prefs[KEY_PEAKING] ?: false
                 val zebra = prefs[KEY_ZEBRA] ?: false
+                val histModeName = prefs[KEY_HISTOGRAM_MODE] ?: HistogramMode.OFF.name
 
                 _settings.value = CameraSettings(
                     aspectMode = runCatching { AspectRatioMode.valueOf(aspectName) }.getOrDefault(AspectRatioMode.RATIO_4_3),
@@ -93,6 +94,7 @@ class ParameterStore(private val context: Context) {
                     lutBurnIn = lutBurn,
                     focusPeakingEnabled = peaking,
                     zebraPatternEnabled = zebra,
+                    histogramMode = runCatching { HistogramMode.valueOf(histModeName) }.getOrDefault(HistogramMode.OFF),
                 )
             }
         }
@@ -253,6 +255,10 @@ class ParameterStore(private val context: Context) {
         scope.launch { context.dataStore.edit { it[KEY_ZEBRA] = enabled } }
     }
 
+    fun setHistogramMode(mode: HistogramMode) {
+        scope.launch { context.dataStore.edit { it[KEY_HISTOGRAM_MODE] = mode.name } }
+    }
+
     private companion object {
         val KEY_ASPECT = stringPreferencesKey("aspect_mode")
         val KEY_DR = stringPreferencesKey("dynamic_range")
@@ -281,5 +287,6 @@ class ParameterStore(private val context: Context) {
         val KEY_LUT_BURN = booleanPreferencesKey("lut_burn_in")
         val KEY_PEAKING = booleanPreferencesKey("focus_peaking")
         val KEY_ZEBRA = booleanPreferencesKey("zebra_pattern")
+        val KEY_HISTOGRAM_MODE = stringPreferencesKey("histogram_mode")
     }
 }

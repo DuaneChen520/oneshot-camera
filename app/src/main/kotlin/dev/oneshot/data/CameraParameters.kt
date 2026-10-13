@@ -59,6 +59,12 @@ enum class LutPreset(val label: String) {
     FLAT_LOG("平坦 Log 灰片 (Flat Log)"),
 }
 
+enum class HistogramMode(val label: String) {
+    OFF("关"),
+    LUMA("亮度"),
+    RGB("RGB"),
+}
+
 @Serializable
 data class CustomLut(
     val id: String,
@@ -96,4 +102,5 @@ data class CameraSettings(
     val lutBurnIn: Boolean = false, // false = preview only, true = burn-in to recorded file
     val focusPeakingEnabled: Boolean = false,
     val zebraPatternEnabled: Boolean = false,
+    val histogramMode: HistogramMode = HistogramMode.OFF,
 )
