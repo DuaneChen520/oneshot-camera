@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.oneshot.camera.RecordingStatus
+import dev.oneshot.ui.theme.OneShotTheme
 
 @Composable
 fun ShutterCluster(
@@ -56,10 +57,10 @@ fun ShutterCluster(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 1. Saved Notice Pill (clickable to jump directly to DCIM/OneShot in Gallery)
+        // 1. Saved Notice Pill (Clickable to jump directly to DCIM/OneShot in Gallery)
         AnimatedVisibility(
             visible = !status.isRecording && status.userNotice != null,
             enter = fadeIn(),
@@ -68,13 +69,14 @@ fun ShutterCluster(
             Box(
                 modifier = Modifier
                     .clip(CapsuleShape)
-                    .background(Color(0xDD2E7D32))
+                    .background(Color(0xE01C2E1E))
+                    .border(width = 0.75.dp, color = OneShotTheme.HardwareGreen.copy(alpha = 0.6f), shape = CapsuleShape)
                     .clickable(onClick = onOpenGallery)
                     .padding(horizontal = 14.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = "✓ ${status.userNotice} (点击查看)",
-                    color = Color.White,
+                    text = "✓ 已定格: ${status.userNotice} (查看底片)",
+                    color = OneShotTheme.FilmSilver,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -82,7 +84,7 @@ fun ShutterCluster(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // 2. Video Recording Status HUD (Timer + Real-time File size)
+        // 2. Video Recording Status HUD (Tally Pulse + Timecode + Real-time File size)
         AnimatedVisibility(
             visible = status.isRecording,
             enter = fadeIn(),
@@ -95,15 +97,15 @@ fun ShutterCluster(
             Row(
                 modifier = Modifier
                     .clip(CapsuleShape)
-                    .background(Color(0xCC000000))
-                    .border(width = 1.dp, color = Color(0x44FF1744), shape = CapsuleShape)
+                    .background(OneShotTheme.ChassisDark)
+                    .border(width = 1.dp, color = OneShotTheme.DarkroomRed.copy(alpha = 0.6f), shape = CapsuleShape)
                     .padding(horizontal = 14.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val transition = rememberInfiniteTransition(label = "pulse")
+                val transition = rememberInfiniteTransition(label = "tallyPulse")
                 val pulse by transition.animateFloat(
-                    initialValue = 0.8f,
+                    initialValue = 0.85f,
                     targetValue = 1.25f,
                     animationSpec = infiniteRepeatable(
                         animation = tween(600),
@@ -113,40 +115,41 @@ fun ShutterCluster(
                 )
                 Box(
                     modifier = Modifier
-                        .size(8.dp)
+                        .size(9.dp)
                         .scale(pulse)
                         .clip(CircleShape)
-                        .background(Color(0xFFFF1744))
+                        .background(OneShotTheme.DarkroomRed)
                 )
                 Text(
-                    text = "%02d:%02d".format(minutes, seconds),
-                    color = Color.White,
+                    text = "REC %02d:%02d".format(minutes, seconds),
+                    color = OneShotTheme.FilmSilver,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace
                 )
                 Text(
                     text = "|  %.1f MB".format(sizeMb),
-                    color = Color.LightGray,
-                    fontSize = 11.sp
+                    color = OneShotTheme.TitaniumGray,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace
                 )
             }
             Spacer(modifier = Modifier.height(10.dp))
         }
 
-        // 3. Three-Shutter Bar Row
+        // 3. Three-Shutter Bar Row (Physical Cluster Architecture)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Far Left: Gallery Button
+            // Far Left: Film Gallery Button (Machined Chassis)
             Box(
                 modifier = Modifier
                     .size(46.dp)
                     .clip(CircleShape)
-                    .background(Color(0x33222222))
-                    .border(width = 1.dp, color = Color(0x66FFFFFF), shape = CircleShape)
+                    .background(OneShotTheme.ChassisDark)
+                    .border(width = 1.dp, color = OneShotTheme.TitaniumBorder, shape = CircleShape)
                     .clickable(
                         enabled = !status.isRecording && !status.isMotionCapturing,
                         onClick = onOpenGallery
@@ -154,28 +157,28 @@ fun ShutterCluster(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "相册",
-                    color = Color(0xFFFFD54F),
+                    text = "底片",
+                    color = OneShotTheme.AmberGrain,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            // Left Shutter: Motion Photo (Live Photo)
+            // Left Shutter: Motion Photo (Live Emulsion Shutter)
             MotionPhotoShutterButton(
                 isCapturing = status.isMotionCapturing,
                 enabled = !status.isRecording && !status.isStillCapturing,
                 onClick = onCaptureMotionPhoto
             )
 
-            // Center Shutter: High-Spec Still Photography
+            // Center Shutter: Decisive Frame Still Photography (Mechanical Shutter)
             StillPhotoShutterButton(
                 isCapturing = status.isStillCapturing,
                 enabled = !status.isRecording && !status.isMotionCapturing,
                 onClick = onTakeStillPhoto
             )
 
-            // Right Shutter: Video Recording
+            // Right Shutter: Video Recording (Darkroom Red Tally Shutter)
             VideoShutterButton(
                 isRecording = status.isRecording,
                 enabled = !status.isStillCapturing && !status.isMotionCapturing,
@@ -189,8 +192,8 @@ fun ShutterCluster(
                 modifier = Modifier
                     .size(46.dp)
                     .clip(CircleShape)
-                    .background(Color(0x33222222))
-                    .border(width = 1.dp, color = Color(0x44FFFFFF), shape = CircleShape)
+                    .background(OneShotTheme.ChassisDark)
+                    .border(width = 1.dp, color = OneShotTheme.TitaniumBorder, shape = CircleShape)
                     .clickable(
                         enabled = !status.isRecording && !status.isMotionCapturing,
                         onClick = onFlipCamera
@@ -199,7 +202,7 @@ fun ShutterCluster(
             ) {
                 Text(
                     text = "翻转",
-                    color = Color.White,
+                    color = OneShotTheme.FilmSilver,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -226,10 +229,10 @@ private fun MotionPhotoShutterButton(
             .size(54.dp)
             .scale(scale)
             .alpha(if (enabled) 1.0f else 0.3f)
-            .border(width = 2.dp, color = Color(0xAAFFD54F), shape = CircleShape)
+            .border(width = 2.dp, color = OneShotTheme.AmberGrain.copy(alpha = 0.85f), shape = CircleShape)
             .padding(4.dp)
             .clip(CircleShape)
-            .background(Color(0x22FFD54F))
+            .background(OneShotTheme.AmberGrainMuted)
             .clickable(
                 enabled = enabled && !isCapturing,
                 interactionSource = interactionSource,
@@ -241,7 +244,7 @@ private fun MotionPhotoShutterButton(
         if (isCapturing) {
             CircularProgressIndicator(
                 modifier = Modifier.size(24.dp),
-                color = Color(0xFFFFD54F),
+                color = OneShotTheme.AmberGrain,
                 strokeWidth = 2.dp
             )
         } else {
@@ -249,11 +252,11 @@ private fun MotionPhotoShutterButton(
                 Box(
                     modifier = Modifier
                         .size(10.dp)
-                        .border(width = 1.5.dp, color = Color(0xFFFFD54F), shape = CircleShape)
+                        .border(width = 1.5.dp, color = OneShotTheme.AmberGrain, shape = CircleShape)
                 )
                 Text(
                     text = "LIVE",
-                    color = Color(0xFFFFD54F),
+                    color = OneShotTheme.AmberGrain,
                     fontSize = 8.sp,
                     fontWeight = FontWeight.ExtraBold,
                     fontFamily = FontFamily.Monospace
@@ -264,7 +267,8 @@ private fun MotionPhotoShutterButton(
 }
 
 /**
- * Center Shutter: Professional dual-ring camera shutter button.
+ * Center Shutter: Professional dual-ring camera mechanical shutter button.
+ * Outer machined steel ring + inner porcelain white button + subtle Amber Grain halo.
  */
 @Composable
 private fun StillPhotoShutterButton(
@@ -281,10 +285,12 @@ private fun StillPhotoShutterButton(
             .size(78.dp)
             .scale(scale)
             .alpha(if (enabled) 1.0f else 0.25f)
-            .border(width = 4.dp, color = Color.White, shape = CircleShape)
-            .padding(6.dp)
+            .border(width = 3.5.dp, color = OneShotTheme.FilmSilver, shape = CircleShape)
+            .padding(5.dp)
+            .border(width = 1.dp, color = OneShotTheme.AmberGrain.copy(alpha = 0.5f), shape = CircleShape)
+            .padding(2.dp)
             .clip(CircleShape)
-            .background(Color(0x33FFFFFF))
+            .background(Color(0x22FFFFFF))
             .clickable(
                 enabled = enabled && !isCapturing,
                 interactionSource = interactionSource,
@@ -296,22 +302,22 @@ private fun StillPhotoShutterButton(
         if (isCapturing) {
             CircularProgressIndicator(
                 modifier = Modifier.size(34.dp),
-                color = Color.White,
+                color = OneShotTheme.AmberGrain,
                 strokeWidth = 3.dp
             )
         } else {
             Box(
                 modifier = Modifier
-                    .size(54.dp)
+                    .size(52.dp)
                     .clip(CircleShape)
-                    .background(Color.White)
+                    .background(OneShotTheme.FilmSilver)
             )
         }
     }
 }
 
 /**
- * Right Shutter: Video record button with morphing red circle -> square stop transition.
+ * Right Shutter: Video record button with morphing Darkroom Red circle -> square stop transition.
  */
 @Composable
 private fun VideoShutterButton(
@@ -328,7 +334,7 @@ private fun VideoShutterButton(
             .size(54.dp)
             .scale(scale)
             .alpha(if (enabled) 1.0f else 0.3f)
-            .border(width = 2.5.dp, color = Color(0xFFFF1744), shape = CircleShape)
+            .border(width = 2.5.dp, color = OneShotTheme.DarkroomRed, shape = CircleShape)
             .padding(4.dp)
             .clickable(
                 enabled = enabled,
@@ -339,20 +345,20 @@ private fun VideoShutterButton(
         contentAlignment = Alignment.Center
     ) {
         if (isRecording) {
-            // Square stop icon
+            // Square stop icon (Darkroom Red)
             Box(
                 modifier = Modifier
                     .size(20.dp)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(Color(0xFFFF1744))
+                    .background(OneShotTheme.DarkroomRed)
             )
         } else {
-            // Round red record dot
+            // Round red record dot (Darkroom Red)
             Box(
                 modifier = Modifier
                     .size(38.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFFF1744))
+                    .background(OneShotTheme.DarkroomRed)
             )
         }
     }

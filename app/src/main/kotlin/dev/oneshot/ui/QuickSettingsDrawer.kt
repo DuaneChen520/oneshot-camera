@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,6 +44,8 @@ import dev.oneshot.data.LutPreset
 import dev.oneshot.data.MotionDurationPreset
 import dev.oneshot.data.QualityPreset
 import dev.oneshot.data.VolumeKeyAction
+
+import dev.oneshot.ui.theme.OneShotTheme
 
 @Composable
 fun QuickSettingsDrawer(
@@ -77,10 +80,10 @@ fun QuickSettingsDrawer(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 20.dp)
+                .padding(horizontal = 12.dp, vertical = 16.dp)
                 .clip(RoundedCornerShape(20.dp))
-                .background(Color(0xF5141414))
-                .border(width = 1.dp, color = Color(0x44FFFFFF), shape = RoundedCornerShape(20.dp))
+                .background(OneShotTheme.ChassisDark)
+                .border(width = 1.dp, color = OneShotTheme.TitaniumBorder, shape = RoundedCornerShape(20.dp))
                 .padding(16.dp)
         ) {
             Column(
@@ -88,29 +91,54 @@ fun QuickSettingsDrawer(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
-                // Header with close pill
+                // Header with Brand Manifesto & close pill
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Q 快速设定抽屉 (Quick Settings)",
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .clip(CircleShape)
+                                    .background(OneShotTheme.AmberGrain)
+                            )
+                            Text(
+                                text = "${OneShotTheme.BRAND_NAME} · 机身设定",
+                                color = OneShotTheme.FilmSilver,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                        Text(
+                            text = OneShotTheme.SLOGAN_SUB,
+                            color = OneShotTheme.TitaniumGray,
+                            fontSize = 10.sp,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+
                     Box(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(Color(0x33FFFFFF))
+                            .background(OneShotTheme.ChassisCard)
+                            .border(width = 0.5.dp, color = OneShotTheme.TitaniumBorder, shape = CircleShape)
                             .clickable {
                                 hapticManager.tick()
                                 onClose()
                             }
-                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                            .padding(horizontal = 12.dp, vertical = 5.dp)
                     ) {
-                        Text(text = "收起 ✕", color = Color(0xFFFFD54F), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Text(
+                            text = "收起 ✕",
+                            color = OneShotTheme.AmberGrain,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
 
@@ -322,7 +350,7 @@ fun QuickSettingsDrawer(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "音量上键 [+] :", color = Color.LightGray, fontSize = 12.sp)
+                        Text(text = "音量上键 [+] :", color = OneShotTheme.TitaniumGray, fontSize = 12.sp)
                         Row(
                             modifier = Modifier.horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -344,7 +372,7 @@ fun QuickSettingsDrawer(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "音量下键 [-] :", color = Color.LightGray, fontSize = 12.sp)
+                        Text(text = "音量下键 [-] :", color = OneShotTheme.TitaniumGray, fontSize = 12.sp)
                         Row(
                             modifier = Modifier.horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -371,9 +399,10 @@ fun QuickSettingsDrawer(
 private fun DrawerSectionTitle(text: String) {
     Text(
         text = text,
-        color = Color(0xAAFFFFFF),
+        color = OneShotTheme.TitaniumGray,
         fontSize = 11.sp,
         fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.5.sp,
         modifier = Modifier.padding(bottom = 6.dp)
     )
 }
@@ -387,10 +416,10 @@ private fun DrawerTile(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(if (isSelected) Color(0x33FFD54F) else Color(0x22FFFFFF))
+            .background(if (isSelected) OneShotTheme.AmberGrainMuted else OneShotTheme.ChassisCard)
             .border(
                 width = 1.dp,
-                color = if (isSelected) Color(0xFFFFD54F) else Color(0x33FFFFFF),
+                color = if (isSelected) OneShotTheme.AmberGrain else OneShotTheme.TitaniumBorder,
                 shape = RoundedCornerShape(8.dp)
             )
             .clickable(onClick = onClick)
@@ -398,7 +427,7 @@ private fun DrawerTile(
     ) {
         Text(
             text = title,
-            color = if (isSelected) Color(0xFFFFD54F) else Color.White,
+            color = if (isSelected) OneShotTheme.AmberGrain else OneShotTheme.FilmSilver,
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )

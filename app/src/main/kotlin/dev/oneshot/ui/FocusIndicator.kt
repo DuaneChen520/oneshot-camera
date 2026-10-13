@@ -15,6 +15,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 
+import dev.oneshot.ui.theme.OneShotTheme
+
 @Composable
 fun FocusIndicator(
     point: PointF?,
@@ -28,35 +30,42 @@ fun FocusIndicator(
     LaunchedEffect(point) {
         scale.animateTo(
             targetValue = 1.0f,
-            animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing)
+            animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
         )
         scale.animateTo(
-            targetValue = 1.05f,
-            animationSpec = tween(durationMillis = 150)
+            targetValue = 1.08f,
+            animationSpec = tween(durationMillis = 120)
         )
         scale.animateTo(
             targetValue = 1.0f,
-            animationSpec = tween(durationMillis = 100)
+            animationSpec = tween(durationMillis = 80)
         )
         delay(1800)
         alpha.animateTo(
             targetValue = 0f,
-            animationSpec = tween(durationMillis = 400)
+            animationSpec = tween(durationMillis = 350)
         )
     }
 
     Box(modifier = modifier.fillMaxSize()) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val center = Offset(point.x, point.y)
-            val baseRadius = 36f * scale.value
-            val ringColor = Color(0xFFFFD54F).copy(alpha = alpha.value)
+            val baseRadius = 34f * scale.value
+            val ringColor = OneShotTheme.AmberGrain.copy(alpha = alpha.value)
 
             // Outer focus circle
             drawCircle(
                 color = ringColor,
                 radius = baseRadius,
                 center = center,
-                style = Stroke(width = 2.5f)
+                style = Stroke(width = 2.0f)
+            )
+
+            // Inner optical rangefinder dot
+            drawCircle(
+                color = ringColor,
+                radius = 2.5f,
+                center = center
             )
 
             // 4 tick marks

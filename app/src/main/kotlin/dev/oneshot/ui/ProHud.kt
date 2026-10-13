@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.oneshot.camera.HapticManager
 import dev.oneshot.data.CameraSettings
+import dev.oneshot.ui.theme.OneShotTheme
 import kotlin.math.roundToInt
 
 private val STANDARD_SHUTTER_SPEEDS = listOf(
@@ -75,13 +76,13 @@ fun ProHud(
             .padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // In-place parameter pills row
+        // In-place parameter pills row (Precision Mechanical Chassis)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xCC111111))
-                .border(width = 0.5.dp, color = Color(0x33FFFFFF), shape = RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(10.dp))
+                .background(OneShotTheme.ChassisDark)
+                .border(width = 0.75.dp, color = OneShotTheme.TitaniumBorder, shape = RoundedCornerShape(10.dp))
                 .padding(horizontal = 6.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -145,8 +146,9 @@ private fun InPlaceZoomPill(
 
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(Color(0x33333333))
+            .clip(RoundedCornerShape(6.dp))
+            .background(OneShotTheme.ChassisCard)
+            .border(width = 0.5.dp, color = OneShotTheme.TitaniumBorder, shape = RoundedCornerShape(6.dp))
             .padding(horizontal = 8.dp, vertical = 5.dp)
             .pointerInput(Unit) {
                 detectTapGestures(
@@ -166,6 +168,7 @@ private fun InPlaceZoomPill(
                             val delta = (accumulatedDrag / 15f) * 0.1f
                             val nextZoom = (zoom + delta).coerceIn(range.start, range.endInclusive)
                             onZoomChange(nextZoom)
+                            hapticManager.tick()
                             accumulatedDrag = 0f
                         }
                     }
@@ -174,10 +177,16 @@ private fun InPlaceZoomPill(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "ZOOM", color = Color(0x88FFFFFF), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = "ZOOM",
+                color = OneShotTheme.TitaniumGray,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp
+            )
             Text(
                 text = "%.1fx".format(zoom),
-                color = Color(0xFFFFD54F),
+                color = if (zoom == 1.0f) OneShotTheme.FilmSilver else OneShotTheme.AmberGrain,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace
@@ -199,8 +208,9 @@ private fun InPlaceEvPill(
 
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(Color(0x33333333))
+            .clip(RoundedCornerShape(6.dp))
+            .background(OneShotTheme.ChassisCard)
+            .border(width = 0.5.dp, color = OneShotTheme.TitaniumBorder, shape = RoundedCornerShape(6.dp))
             .padding(horizontal = 8.dp, vertical = 5.dp)
             .pointerInput(Unit) {
                 detectTapGestures(
@@ -218,11 +228,17 @@ private fun InPlaceEvPill(
                         accumulatedDrag += dragAmount.x
                         if (accumulatedDrag >= 20f) {
                             val next = (currentEvIndex + 1).coerceAtMost(exposureRange.last)
-                            if (next != currentEvIndex) onEvChange(next)
+                            if (next != currentEvIndex) {
+                                onEvChange(next)
+                                hapticManager.tick()
+                            }
                             accumulatedDrag = 0f
                         } else if (accumulatedDrag <= -20f) {
                             val next = (currentEvIndex - 1).coerceAtLeast(exposureRange.first)
-                            if (next != currentEvIndex) onEvChange(next)
+                            if (next != currentEvIndex) {
+                                onEvChange(next)
+                                hapticManager.tick()
+                            }
                             accumulatedDrag = 0f
                         }
                     }
@@ -231,10 +247,16 @@ private fun InPlaceEvPill(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "EV", color = Color(0x88FFFFFF), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = "EV",
+                color = OneShotTheme.TitaniumGray,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp
+            )
             Text(
                 text = "%+.1f".format(evValue),
-                color = if (currentEvIndex == 0) Color.White else Color(0xFFFFD54F),
+                color = if (currentEvIndex == 0) OneShotTheme.FilmSilver else OneShotTheme.AmberGrain,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace
@@ -260,8 +282,9 @@ private fun InPlaceShutterPill(
 
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(Color(0x33333333))
+            .clip(RoundedCornerShape(6.dp))
+            .background(OneShotTheme.ChassisCard)
+            .border(width = 0.5.dp, color = OneShotTheme.TitaniumBorder, shape = RoundedCornerShape(6.dp))
             .padding(horizontal = 8.dp, vertical = 5.dp)
             .pointerInput(isAuto) {
                 detectTapGestures(
@@ -290,11 +313,13 @@ private fun InPlaceShutterPill(
                             if (isAuto) onToggleAuto(false)
                             val nextIdx = (currentIndex + 1).coerceAtMost(STANDARD_SHUTTER_SPEEDS.lastIndex)
                             onSpeedChange(STANDARD_SHUTTER_SPEEDS[nextIdx].first)
+                            hapticManager.tick()
                             accumulatedDrag = 0f
                         } else if (accumulatedDrag <= -25f) {
                             if (isAuto) onToggleAuto(false)
                             val nextIdx = (currentIndex - 1).coerceAtLeast(0)
                             onSpeedChange(STANDARD_SHUTTER_SPEEDS[nextIdx].first)
+                            hapticManager.tick()
                             accumulatedDrag = 0f
                         }
                     }
@@ -303,10 +328,16 @@ private fun InPlaceShutterPill(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "SEC", color = Color(0x88FFFFFF), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = "SEC",
+                color = OneShotTheme.TitaniumGray,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp
+            )
             Text(
                 text = speedLabel,
-                color = if (isAuto) Color(0xFF64B5F6) else Color(0xFFFFD54F),
+                color = if (isAuto) OneShotTheme.AutoSkyBlue else OneShotTheme.AmberGrain,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace
@@ -331,8 +362,9 @@ private fun InPlaceIsoPill(
 
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(Color(0x33333333))
+            .clip(RoundedCornerShape(6.dp))
+            .background(OneShotTheme.ChassisCard)
+            .border(width = 0.5.dp, color = OneShotTheme.TitaniumBorder, shape = RoundedCornerShape(6.dp))
             .padding(horizontal = 8.dp, vertical = 5.dp)
             .pointerInput(isAuto) {
                 detectTapGestures(
@@ -361,11 +393,13 @@ private fun InPlaceIsoPill(
                             if (isAuto) onToggleAuto(false)
                             val nextIdx = (currentIndex + 1).coerceAtMost(STANDARD_ISOS.lastIndex)
                             onIsoChange(STANDARD_ISOS[nextIdx])
+                            hapticManager.tick()
                             accumulatedDrag = 0f
                         } else if (accumulatedDrag <= -25f) {
                             if (isAuto) onToggleAuto(false)
                             val nextIdx = (currentIndex - 1).coerceAtLeast(0)
                             onIsoChange(STANDARD_ISOS[nextIdx])
+                            hapticManager.tick()
                             accumulatedDrag = 0f
                         }
                     }
@@ -374,10 +408,16 @@ private fun InPlaceIsoPill(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "ISO", color = Color(0x88FFFFFF), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = "ISO",
+                color = OneShotTheme.TitaniumGray,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp
+            )
             Text(
                 text = isoLabel,
-                color = if (isAuto) Color(0xFF64B5F6) else Color(0xFFFFD54F),
+                color = if (isAuto) OneShotTheme.AutoSkyBlue else OneShotTheme.AmberGrain,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace
@@ -400,8 +440,9 @@ private fun InPlaceWbPill(
 
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(Color(0x33333333))
+            .clip(RoundedCornerShape(6.dp))
+            .background(OneShotTheme.ChassisCard)
+            .border(width = 0.5.dp, color = OneShotTheme.TitaniumBorder, shape = RoundedCornerShape(6.dp))
             .padding(horizontal = 8.dp, vertical = 5.dp)
             .pointerInput(isAuto) {
                 detectTapGestures(
@@ -425,11 +466,13 @@ private fun InPlaceWbPill(
                             if (isAuto) onToggleAuto(false)
                             val next = (cctKelvin + 100).coerceAtMost(8000)
                             onCctChange(next)
+                            hapticManager.tick()
                             accumulatedDrag = 0f
                         } else if (accumulatedDrag <= -20f) {
                             if (isAuto) onToggleAuto(false)
                             val next = (cctKelvin - 100).coerceAtLeast(2800)
                             onCctChange(next)
+                            hapticManager.tick()
                             accumulatedDrag = 0f
                         }
                     }
@@ -438,10 +481,16 @@ private fun InPlaceWbPill(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "WB", color = Color(0x88FFFFFF), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = "WB",
+                color = OneShotTheme.TitaniumGray,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp
+            )
             Text(
                 text = wbLabel,
-                color = if (isAuto) Color(0xFF64B5F6) else Color(0xFFFFD54F),
+                color = if (isAuto) OneShotTheme.AutoSkyBlue else OneShotTheme.AmberGrain,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace

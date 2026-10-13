@@ -41,6 +41,8 @@ import androidx.compose.ui.window.Dialog
 import dev.oneshot.camera.HapticManager
 import kotlin.math.roundToInt
 
+import dev.oneshot.ui.theme.OneShotTheme
+
 @Composable
 fun AbgmTintDialog(
     isAuto: Boolean,
@@ -54,8 +56,8 @@ fun AbgmTintDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = Color(0xF0181818),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x44FFFFFF))
+            color = OneShotTheme.ChassisDark,
+            border = androidx.compose.foundation.BorderStroke(1.dp, OneShotTheme.TitaniumBorder)
         ) {
             Column(
                 modifier = Modifier
@@ -64,15 +66,16 @@ fun AbgmTintDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "ABGM 专业白平衡调色盘",
-                    color = Color.White,
+                    text = "ABGM 影视级白平衡调色盘",
+                    color = OneShotTheme.FilmSilver,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = if (isAuto) "当前状态: 自动白平衡 (AWB)" else "${cctKelvin}K  |  Tint: %s%d".format(if (tintGm >= 0) "M+" else "G", tintGm),
-                    color = if (isAuto) Color(0xFF64B5F6) else Color(0xFFFFD54F),
+                    color = if (isAuto) OneShotTheme.AutoSkyBlue else OneShotTheme.AmberGrain,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     fontFamily = FontFamily.Monospace
@@ -116,18 +119,18 @@ fun AbgmTintDialog(
                             hapticManager.shutterClick()
                             onDismiss()
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0x33FFFFFF)),
+                        colors = ButtonDefaults.buttonColors(containerColor = OneShotTheme.ChassisCard),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text(text = "恢复 AUTO", color = Color(0xFF64B5F6), fontSize = 12.sp)
+                        Text(text = "恢复 AUTO", color = OneShotTheme.AutoSkyBlue, fontSize = 12.sp)
                     }
 
                     Button(
                         onClick = onDismiss,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD54F)),
+                        colors = ButtonDefaults.buttonColors(containerColor = OneShotTheme.AmberGrain),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text(text = "完成设定", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "完成设定", color = OneShotTheme.ObsidianBlack, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -242,12 +245,13 @@ private fun WbPresetChip(label: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(Color(0x33FFFFFF))
+            .background(OneShotTheme.ChassisCard)
+            .border(width = 0.5.dp, color = OneShotTheme.TitaniumBorder, shape = RoundedCornerShape(6.dp))
             .padding(horizontal = 6.dp, vertical = 4.dp)
             .pointerInput(Unit) {
                 detectTapGestures { onClick() }
             }
     ) {
-        Text(text = label, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+        Text(text = label, color = OneShotTheme.FilmSilver, fontSize = 10.sp, fontWeight = FontWeight.Medium)
     }
 }

@@ -17,11 +17,17 @@ class HapticManager(private val context: Context) {
     }
 
     /**
-     * Subtle tick when dragging parameters (EV, ISO, Shutter, Zoom)
+     * Subtle ratchet tick when dragging dials/parameters (EV, ISO, Shutter, Zoom)
      */
     fun tick() {
         runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                vibrator?.vibrate(
+                    VibrationEffect.startComposition()
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.8f, 0)
+                        .compose()
+                )
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
             } else {
                 @Suppress("DEPRECATION")
@@ -31,15 +37,42 @@ class HapticManager(private val context: Context) {
     }
 
     /**
-     * Mechanical shutter click feeling when capturing still photo
+     * Mechanical shutter click with curtain snap & mirror recoil
      */
     fun shutterClick() {
         runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                vibrator?.vibrate(
+                    VibrationEffect.startComposition()
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, 0)
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_THUD, 0.75f, 10)
+                        .compose()
+                )
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
             } else {
                 @Suppress("DEPRECATION")
                 vibrator?.vibrate(35)
+            }
+        }
+    }
+
+    /**
+     * Focus lock confirmation micro-tick
+     */
+    fun focusLocked() {
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                vibrator?.vibrate(
+                    VibrationEffect.startComposition()
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.6f, 0)
+                        .compose()
+                )
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator?.vibrate(10)
             }
         }
     }

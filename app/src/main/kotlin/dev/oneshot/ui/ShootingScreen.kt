@@ -56,6 +56,10 @@ import dev.oneshot.data.LensFacingMode
 import dev.oneshot.data.ParameterStore
 import kotlinx.coroutines.delay
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import dev.oneshot.ui.theme.OneShotTheme
+
 @Composable
 fun ShootingScreen(
     cameraController: CameraController,
@@ -102,22 +106,46 @@ fun ShootingScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black),
+                .background(OneShotTheme.ObsidianBlack),
             contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(32.dp)
+            ) {
                 Text(
-                    text = "OneShot 专业相机需要相机与麦克风权限",
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
+                    text = OneShotTheme.BRAND_NAME,
+                    color = OneShotTheme.FilmSilver,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.sp,
+                    fontFamily = OneShotTheme.MonospaceFont
                 )
-                Spacer(modifier = Modifier.padding(8.dp))
+                Spacer(modifier = Modifier.padding(4.dp))
+                Text(
+                    text = OneShotTheme.SLOGAN_MAIN,
+                    color = OneShotTheme.AmberGrain,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.padding(2.dp))
+                Text(
+                    text = OneShotTheme.SLOGAN_SUB,
+                    color = OneShotTheme.TitaniumGray,
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.padding(16.dp))
                 Button(
                     onClick = { permissionLauncher.launch(permissionsToRequest) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD54F))
+                    colors = ButtonDefaults.buttonColors(containerColor = OneShotTheme.AmberGrain),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
                 ) {
-                    Text("授予相机与录音权限", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "开启相机与光学传感器权限",
+                        color = OneShotTheme.ObsidianBlack,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
                 }
             }
         }
@@ -179,6 +207,7 @@ fun ShootingScreen(
                         detectTapGestures { offset ->
                             val pv = previewViewRef ?: return@detectTapGestures
                             cameraController.setFocusAndMetering(pv.meteringPointFactory, offset.x, offset.y)
+                            hapticManager.focusLocked()
                         }
                     }
                     .pointerInput(Unit) {
@@ -216,6 +245,9 @@ fun ShootingScreen(
                         previewViewRef = view
                     }
                 )
+
+                // Optical Ground Glass Corner Framing Reticles (BRAND.md 4:3 Open Gate Aesthetics)
+                OpticalFramingReticle(modifier = Modifier.fillMaxSize())
 
                 // Mechanical Shutter Flash Reflex Mirror blackout overlay
                 AnimatedVisibility(
@@ -370,5 +402,45 @@ fun ShootingScreen(
                 hapticManager = hapticManager
             )
         }
+    }
+}
+
+/**
+ * Optical Ground Glass Framing Reticle (BRAND.md 4:3 Open Gate Aesthetics)
+ * Draws subtle L-shaped crop brackets at viewfinder corners and micro center mark.
+ */
+@Composable
+private fun OpticalFramingReticle(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val margin = 16.dp.toPx()
+        val cornerLen = 14.dp.toPx()
+        val color = OneShotTheme.TitaniumGray.copy(alpha = 0.35f)
+        val stroke = 1.2f
+
+        // Top-Left corner ⸢
+        drawLine(color, Offset(margin, margin), Offset(margin + cornerLen, margin), strokeWidth = stroke)
+        drawLine(color, Offset(margin, margin), Offset(margin, margin + cornerLen), strokeWidth = stroke)
+
+        // Top-Right corner ⸣
+        drawLine(color, Offset(w - margin, margin), Offset(w - margin - cornerLen, margin), strokeWidth = stroke)
+        drawLine(color, Offset(w - margin, margin), Offset(w - margin, margin + cornerLen), strokeWidth = stroke)
+
+        // Bottom-Left corner ⸤
+        drawLine(color, Offset(margin, h - margin), Offset(margin + cornerLen, h - margin), strokeWidth = stroke)
+        drawLine(color, Offset(margin, h - margin), Offset(margin, h - margin - cornerLen), strokeWidth = stroke)
+
+        // Bottom-Right corner ⸥
+        drawLine(color, Offset(w - margin, h - margin), Offset(w - margin - cornerLen, h - margin), strokeWidth = stroke)
+        drawLine(color, Offset(w - margin, h - margin), Offset(w - margin, h - margin - cornerLen), strokeWidth = stroke)
+
+        // Center optical crosshair micro-mark
+        val cx = w / 2f
+        val cy = h / 2f
+        val ch = 5.dp.toPx()
+        val centerColor = OneShotTheme.TitaniumGray.copy(alpha = 0.22f)
+        drawLine(centerColor, Offset(cx - ch, cy), Offset(cx + ch, cy), strokeWidth = 1.0f)
+        drawLine(centerColor, Offset(cx, cy - ch), Offset(cx, cy + ch), strokeWidth = 1.0f)
     }
 }
