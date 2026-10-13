@@ -38,6 +38,8 @@
 | **22** | **扁平 Log 曲线与色彩空间选择** | M5 | `[x] 已完成` | 包含好莱坞青橙、柯达胶片与 Flat Log 灰片曲线，Display P3/Rec.2020/sRGB 切换 |
 | **23** | **峰值对焦与斑马纹曝光辅助** | M5 | `[x] 已完成` | Focus Peaking 荧光绿轮廓高亮 + 斑马纹高光曝光过度对角条纹警告 |
 | **24** | **极致性能优化与 Baseline Profile** | M6 | `[x] 已完成` | 接入 Macrobenchmark 模块、生成 ART Baseline Profile、完成 GL 纹理与 Surface 生命周期内存深度治理 |
+| **25** | **自定义视频码率梯级与平滑滑杆** | M6 | `[x] 已完成` | 10~200 Mbps 触觉刻度无级滑杆，提供 AUTO/12M/30M/60M/100M/150M/200M 工业预设 |
+| **26** | **HEVC (H.265) 视频编码与 HEIF (HEIC) 照片格式** | M6 | `[x] 已完成` | 支持 HEVC 硬件编码器；集成 Android 原生 HeifWriter 实现超清 .heic 静态照片直写 |
 
 ---
 
