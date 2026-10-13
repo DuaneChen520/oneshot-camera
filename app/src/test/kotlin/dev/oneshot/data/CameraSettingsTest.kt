@@ -26,6 +26,7 @@ class CameraSettingsTest {
         assertTrue(settings.isAutoShutter)
         assertTrue(settings.isAutoIso)
         assertEquals(FpsPreset.FPS_30, settings.fpsPreset)
+        assertEquals(0, settings.videoBitrateMbps)
         assertEquals(ColorSpacePreset.REC_2020, settings.colorSpace)
         assertFalse(settings.lutEnabled)
         assertEquals(LutPreset.TEAL_AND_ORANGE, settings.lutPreset)
@@ -43,6 +44,28 @@ class CameraSettingsTest {
         assertEquals(5, settings.hudPresets.zoomPresets.size)
         assertEquals(5, settings.hudPresets.focusPresets.size)
         assertEquals(5, settings.hudPresets.wbPresets.size)
+    }
+
+    @Test
+    fun testVideoBitrateSettingsAndHelper() {
+        val settings = CameraSettings()
+        assertEquals(0, settings.videoBitrateMbps)
+
+        assertTrue(VideoBitrateHelper.KEY_ANCHORS.contains(12))
+        assertTrue(VideoBitrateHelper.KEY_ANCHORS.contains(30))
+        assertTrue(VideoBitrateHelper.KEY_ANCHORS.contains(60))
+        assertTrue(VideoBitrateHelper.KEY_ANCHORS.contains(100))
+        assertTrue(VideoBitrateHelper.KEY_ANCHORS.contains(150))
+        assertTrue(VideoBitrateHelper.KEY_ANCHORS.contains(200))
+
+        assertEquals("AUTO (自适应)", VideoBitrateHelper.getLabel(0))
+        assertEquals("12 Mbps (轻量网络)", VideoBitrateHelper.getLabel(12))
+        assertEquals("100 Mbps (电影级 Pro)", VideoBitrateHelper.getLabel(100))
+        assertEquals("45 Mbps (自定义)", VideoBitrateHelper.getLabel(45))
+
+        assertTrue(VideoBitrateHelper.estimateStoragePerMinute(0).contains("250~350"))
+        assertEquals("约 90 MB/分", VideoBitrateHelper.estimateStoragePerMinute(12))
+        assertEquals("约 750 MB/分", VideoBitrateHelper.estimateStoragePerMinute(100))
     }
 
     @Test

@@ -94,6 +94,7 @@ data class CameraSettings(
     val isAutoIso: Boolean = true,
     val isoValue: Int = 100,
     val fpsPreset: FpsPreset = FpsPreset.FPS_30,
+    val videoBitrateMbps: Int = 0, // 0 = AUTO (System/CameraX default), >0 = Target Mbps (10..200)
     val colorSpace: ColorSpacePreset = ColorSpacePreset.REC_2020,
     val lutEnabled: Boolean = false,
     val lutPreset: LutPreset = LutPreset.TEAL_AND_ORANGE,
@@ -107,6 +108,31 @@ data class CameraSettings(
     val histogramMode: HistogramMode = HistogramMode.OFF,
     val hudPresets: ProHudPresets = ProHudPresets(),
 )
+
+object VideoBitrateHelper {
+    val KEY_ANCHORS = listOf(12, 30, 60, 100, 150, 200)
+
+    fun getLabel(mbps: Int): String = when (mbps) {
+        0 -> "AUTO (自适应)"
+        12 -> "12 Mbps (轻量网络)"
+        30 -> "30 Mbps (日常标清)"
+        60 -> "60 Mbps (4K 标准)"
+        100 -> "100 Mbps (电影级 Pro)"
+        150 -> "150 Mbps (4:3 全开)"
+        200 -> "200 Mbps (满血母带)"
+        else -> "$mbps Mbps (自定义)"
+    }
+
+    fun estimateStoragePerMinute(mbps: Int): String {
+        if (mbps <= 0) return "约 250~350 MB/分"
+        val mbPerMin = (mbps.toDouble() * 60.0) / 8.0
+        return if (mbPerMin >= 1024.0) {
+            "约 %.1f GB/分".format(java.util.Locale.US, mbPerMin / 1024.0)
+        } else {
+            "约 ${mbPerMin.toInt()} MB/分"
+        }
+    }
+}
 
 @Serializable
 data class ProHudPresets(

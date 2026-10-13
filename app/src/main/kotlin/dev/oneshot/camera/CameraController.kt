@@ -132,6 +132,7 @@ class CameraController(
                         prev.aspectMode != settings.aspectMode ||
                         prev.dynamicRange != settings.dynamicRange ||
                         prev.quality != settings.quality ||
+                        prev.videoBitrateMbps != settings.videoBitrateMbps ||
                         prev.dcgHdrEnabled != settings.dcgHdrEnabled ||
                         prev.ultraHdrEnabled != settings.ultraHdrEnabled ||
                         prev.lutBurnIn != settings.lutBurnIn
@@ -208,6 +209,10 @@ class CameraController(
         val recorderBuilder = Recorder.Builder()
             .setAspectRatio(effectiveSettings.aspectMode.cameraXRatio)
             .setExecutor(mainExecutor)
+
+        if (effectiveSettings.videoBitrateMbps > 0) {
+            recorderBuilder.setTargetVideoEncodingBitRate(effectiveSettings.videoBitrateMbps * 1_000_000)
+        }
 
         if (effectiveSettings.quality != QualityPreset.OPENGATE_MAX && effectiveSettings.quality.cameraXQuality != null) {
             recorderBuilder.setQualitySelector(

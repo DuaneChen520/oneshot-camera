@@ -53,6 +53,7 @@ class ParameterStore(private val context: Context) {
                 val autoIso = prefs[KEY_AUTO_ISO] ?: true
                 val iso = prefs[KEY_ISO] ?: 100
                 val fps = prefs[KEY_FPS] ?: FpsPreset.FPS_30.name
+                val videoBitrate = prefs[KEY_VIDEO_BITRATE_MBPS] ?: 0
                 val cs = prefs[KEY_COLOR_SPACE] ?: ColorSpacePreset.REC_2020.name
                 val lut = prefs[KEY_LUT] ?: false
                 val lutPresetName = prefs[KEY_LUT_PRESET] ?: LutPreset.TEAL_AND_ORANGE.name
@@ -94,6 +95,7 @@ class ParameterStore(private val context: Context) {
                     isAutoIso = autoIso,
                     isoValue = iso,
                     fpsPreset = runCatching { FpsPreset.valueOf(fps) }.getOrDefault(FpsPreset.FPS_30),
+                    videoBitrateMbps = videoBitrate,
                     colorSpace = runCatching { ColorSpacePreset.valueOf(cs) }.getOrDefault(ColorSpacePreset.REC_2020),
                     lutEnabled = lut,
                     lutPreset = runCatching { LutPreset.valueOf(lutPresetName) }.getOrDefault(LutPreset.TEAL_AND_ORANGE),
@@ -185,6 +187,10 @@ class ParameterStore(private val context: Context) {
 
     fun setFpsPreset(fps: FpsPreset) {
         scope.launch { context.dataStore.edit { it[KEY_FPS] = fps.name } }
+    }
+
+    fun setVideoBitrateMbps(mbps: Int) {
+        scope.launch { context.dataStore.edit { it[KEY_VIDEO_BITRATE_MBPS] = mbps } }
     }
 
     fun setColorSpace(cs: ColorSpacePreset) {
@@ -313,6 +319,7 @@ class ParameterStore(private val context: Context) {
         val KEY_AUTO_ISO = booleanPreferencesKey("auto_iso")
         val KEY_ISO = intPreferencesKey("iso_value")
         val KEY_FPS = stringPreferencesKey("fps_preset")
+        val KEY_VIDEO_BITRATE_MBPS = intPreferencesKey("video_bitrate_mbps")
         val KEY_COLOR_SPACE = stringPreferencesKey("color_space")
         val KEY_LUT = booleanPreferencesKey("lut_enabled")
         val KEY_LUT_PRESET = stringPreferencesKey("lut_preset")

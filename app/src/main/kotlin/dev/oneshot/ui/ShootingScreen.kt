@@ -440,6 +440,7 @@ fun ShootingScreen(
             onSetAspect = { parameterStore.setAspectRatio(it) },
             onSetQuality = { parameterStore.setQuality(it) },
             onSetFps = { parameterStore.setFpsPreset(it) },
+            onSetVideoBitrate = { parameterStore.setVideoBitrateMbps(it) },
             onSetDynamicRange = { parameterStore.setDynamicRange(it) },
             onToggleDcg = { parameterStore.setDcgHdr(it) },
             onToggleUltraHdr = { parameterStore.setUltraHdr(it) },

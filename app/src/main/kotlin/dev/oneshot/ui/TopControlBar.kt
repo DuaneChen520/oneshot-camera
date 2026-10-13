@@ -162,7 +162,7 @@ fun TopControlBar(
 
             // 5. Q-Menu Pill (Sliding Quick Settings Drawer)
             PillButton(
-                text = "Q 机身设定",
+                text = "Q 设定",
                 active = true,
                 activeColor = OneShotTheme.AmberGrain,
                 onClick = onOpenQMenu
