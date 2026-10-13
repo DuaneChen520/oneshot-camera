@@ -133,6 +133,7 @@ fun ShootingScreen(
     val currentEvIndex by cameraController.currentEvIndex.collectAsState()
     val focusPoint by cameraController.focusPoint.collectAsState()
     val recordingStatus by cameraController.recordingStatus.collectAsState()
+    val capabilities by cameraController.capabilities.collectAsState()
 
     var previewViewRef by remember { mutableStateOf<PreviewView?>(null) }
     var isQMenuOpen by remember { mutableStateOf(false) }
@@ -243,6 +244,7 @@ fun ShootingScreen(
         // 2. Overlays: Top Control Bar
         TopControlBar(
             settings = settings,
+            capabilities = capabilities,
             onToggleAspect = {
                 val next = if (settings.aspectMode == AspectRatioMode.RATIO_4_3) AspectRatioMode.RATIO_16_9 else AspectRatioMode.RATIO_4_3
                 parameterStore.setAspectRatio(next)
@@ -254,12 +256,10 @@ fun ShootingScreen(
                 hapticManager.tick()
             },
             onToggleFps = {
-                val nextFps = when (settings.fpsPreset) {
-                    FpsPreset.FPS_24 -> FpsPreset.FPS_30
-                    FpsPreset.FPS_30 -> FpsPreset.FPS_60
-                    FpsPreset.FPS_60 -> FpsPreset.FPS_120
-                    FpsPreset.FPS_120 -> FpsPreset.FPS_24
-                }
+                val supported = capabilities.supportedFpsPresets
+                val currentIndex = supported.indexOf(settings.fpsPreset)
+                val nextIndex = (if (currentIndex >= 0) currentIndex + 1 else 0) % supported.size
+                val nextFps = supported[nextIndex]
                 parameterStore.setFpsPreset(nextFps)
                 hapticManager.tick()
             },
@@ -333,6 +333,7 @@ fun ShootingScreen(
         QuickSettingsDrawer(
             isOpen = isQMenuOpen,
             settings = settings,
+            capabilities = capabilities,
             onClose = { isQMenuOpen = false },
             onSetAspect = { parameterStore.setAspectRatio(it) },
             onSetQuality = { parameterStore.setQuality(it) },

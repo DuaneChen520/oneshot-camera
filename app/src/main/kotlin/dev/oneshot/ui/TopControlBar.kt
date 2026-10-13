@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.oneshot.camera.DeviceCapabilities
 import dev.oneshot.data.AspectRatioMode
 import dev.oneshot.data.CameraSettings
 import dev.oneshot.data.DynamicRangeMode
@@ -27,6 +28,7 @@ import dev.oneshot.data.FpsPreset
 @Composable
 fun TopControlBar(
     settings: CameraSettings,
+    capabilities: DeviceCapabilities,
     onToggleAspect: () -> Unit,
     onToggleDynamicRange: () -> Unit,
     onToggleFps: () -> Unit,
@@ -57,10 +59,10 @@ fun TopControlBar(
                 text = if (settings.dynamicRange == DynamicRangeMode.HLG10) "10-bit HLG" else "SDR",
                 active = settings.dynamicRange == DynamicRangeMode.HLG10,
                 activeColor = Color(0xFFFFB300),
-                onClick = onToggleDynamicRange
+                onClick = if (capabilities.isHlg10Supported) onToggleDynamicRange else { {} }
             )
 
-            // 3. FPS Toggle Pill (24 -> 30 -> 60 -> 120 fps)
+            // 3. FPS Toggle Pill (cycles through hardware supported presets)
             PillButton(
                 text = "${settings.fpsPreset.targetFps} fps",
                 active = true,
@@ -68,13 +70,15 @@ fun TopControlBar(
                 onClick = onToggleFps
             )
 
-            // 4. DCG Hardware HDR Pill
-            PillButton(
-                text = "DCG HDR",
-                active = settings.dcgHdrEnabled,
-                activeColor = Color(0xFF00E676),
-                onClick = onToggleDcg
-            )
+            // 4. DCG Hardware HDR Pill (Smoothly hidden if device lacks Qualcomm DCG tag 0x8003)
+            if (capabilities.isDcgSupported) {
+                PillButton(
+                    text = "DCG HDR",
+                    active = settings.dcgHdrEnabled,
+                    activeColor = Color(0xFF00E676),
+                    onClick = onToggleDcg
+                )
+            }
 
             // 5. Q-Menu Pill (Sliding Quick Settings Drawer)
             PillButton(

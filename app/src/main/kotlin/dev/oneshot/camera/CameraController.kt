@@ -107,6 +107,10 @@ class CameraController(
     private val _recordingStatus = MutableStateFlow(RecordingStatus())
     val recordingStatus: StateFlow<RecordingStatus> = _recordingStatus.asStateFlow()
 
+    private val capabilityDegrader = DeviceCapabilityDegrader(context)
+    private val _capabilities = MutableStateFlow(capabilityDegrader.detectCapabilities())
+    val capabilities: StateFlow<DeviceCapabilities> = _capabilities.asStateFlow()
+
     init {
         scope.launch {
             parameterStore.settings.collectLatest { settings ->
@@ -148,7 +152,11 @@ class CameraController(
 
         provider.unbindAll()
 
-        val selector = when (settings.lensFacing) {
+        val detectedCaps = capabilityDegrader.detectCapabilities(settings.lensFacing)
+        _capabilities.value = detectedCaps
+        val effectiveSettings = capabilityDegrader.sanitizeSettings(settings, detectedCaps)
+
+        val selector = when (effectiveSettings.lensFacing) {
             LensFacingMode.FRONT -> CameraSelector.DEFAULT_FRONT_CAMERA
             LensFacingMode.BACK -> CameraSelector.DEFAULT_BACK_CAMERA
         }
@@ -160,10 +168,10 @@ class CameraController(
 
         // 2. Build ImageCapture (M2 High-spec Stills)
         val imageCaptureBuilder = ImageCapture.Builder()
-            .setTargetAspectRatio(settings.aspectMode.cameraXRatio)
+            .setTargetAspectRatio(effectiveSettings.aspectMode.cameraXRatio)
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && settings.ultraHdrEnabled) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && effectiveSettings.ultraHdrEnabled) {
             runCatching {
                 imageCaptureBuilder.setOutputFormat(ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR)
             }
@@ -173,19 +181,19 @@ class CameraController(
 
         // 3. Build Recorder and VideoCapture
         val recorderBuilder = Recorder.Builder()
-            .setAspectRatio(settings.aspectMode.cameraXRatio)
+            .setAspectRatio(effectiveSettings.aspectMode.cameraXRatio)
             .setExecutor(mainExecutor)
 
-        if (settings.quality != QualityPreset.OPENGATE_MAX && settings.quality.cameraXQuality != null) {
+        if (effectiveSettings.quality != QualityPreset.OPENGATE_MAX && effectiveSettings.quality.cameraXQuality != null) {
             recorderBuilder.setQualitySelector(
                 QualitySelector.from(
-                    settings.quality.cameraXQuality,
-                    FallbackStrategy.lowerQualityOrHigherThan(settings.quality.cameraXQuality)
+                    effectiveSettings.quality.cameraXQuality,
+                    FallbackStrategy.lowerQualityOrHigherThan(effectiveSettings.quality.cameraXQuality)
                 )
             )
         }
 
-        val dynamicRange = when (settings.dynamicRange) {
+        val dynamicRange = when (effectiveSettings.dynamicRange) {
             DynamicRangeMode.HLG10 -> DynamicRange.HLG_10_BIT
             DynamicRangeMode.SDR -> DynamicRange.SDR
         }
@@ -193,7 +201,7 @@ class CameraController(
         val videoCaptureBuilder = VideoCapture.Builder(recorderBuilder.build())
             .setDynamicRange(dynamicRange)
 
-        if (settings.quality == QualityPreset.OPENGATE_MAX) {
+        if (effectiveSettings.quality == QualityPreset.OPENGATE_MAX) {
             runCatching {
                 videoCaptureBuilder.setCustomOrderedResolutions(listOf(Size(4096, 3072), Size(2880, 2160)))
             }
@@ -206,7 +214,7 @@ class CameraController(
         val useCases: MutableList<UseCase> = mutableListOf(preview, imageCapture, videoCapture)
         val sessionConfigBuilder = SessionConfig.Builder(useCases)
 
-        if (settings.dcgHdrEnabled && settings.lensFacing == LensFacingMode.BACK) {
+        if (effectiveSettings.dcgHdrEnabled && effectiveSettings.lensFacing == LensFacingMode.BACK) {
             sessionConfigBuilder.setInterop(Camera2Interop.forSessionConfig { interop ->
                 runCatching {
                     interop.setSessionParameter(
@@ -218,12 +226,12 @@ class CameraController(
         }
 
         // Bind use cases to lifecycle with graceful fallback
-        val hasEffect = settings.lutEnabled || settings.focusPeakingEnabled || settings.zebraPatternEnabled
+        val hasEffect = effectiveSettings.lutEnabled || effectiveSettings.focusPeakingEnabled || effectiveSettings.zebraPatternEnabled
         if (hasEffect) {
             val processor = glProcessor ?: OneshotGlProcessor().also { glProcessor = it }
-            processor.updateSettings(settings)
+            processor.updateSettings(effectiveSettings)
 
-            val targets = if (settings.lutBurnIn) {
+            val targets = if (effectiveSettings.lutBurnIn) {
                 CameraEffect.PREVIEW or CameraEffect.VIDEO_CAPTURE
             } else {
                 CameraEffect.PREVIEW

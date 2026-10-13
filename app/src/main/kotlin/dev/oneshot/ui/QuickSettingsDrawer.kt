@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.oneshot.camera.DeviceCapabilities
 import dev.oneshot.camera.HapticManager
 import dev.oneshot.data.AspectRatioMode
 import dev.oneshot.data.CameraSettings
@@ -46,6 +47,7 @@ import dev.oneshot.data.VolumeKeyAction
 fun QuickSettingsDrawer(
     isOpen: Boolean,
     settings: CameraSettings,
+    capabilities: DeviceCapabilities,
     onClose: () -> Unit,
     onSetAspect: (AspectRatioMode) -> Unit,
     onSetQuality: (QualityPreset) -> Unit,
@@ -133,7 +135,7 @@ fun QuickSettingsDrawer(
                 // Section 2: Video Resolution & Quality Ladder
                 DrawerSectionTitle("视频画质天梯 (Resolution)")
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    QualityPreset.entries.forEach { q ->
+                    capabilities.supportedQualities.forEach { q ->
                         DrawerTile(
                             title = q.label,
                             isSelected = settings.quality == q,
@@ -150,7 +152,7 @@ fun QuickSettingsDrawer(
                 // Section 3: Frame Rate
                 DrawerSectionTitle("录像帧率 (Frame Rate)")
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FpsPreset.entries.forEach { fps ->
+                    capabilities.supportedFpsPresets.forEach { fps ->
                         DrawerTile(
                             title = fps.label,
                             isSelected = settings.fpsPreset == fps,
@@ -167,7 +169,8 @@ fun QuickSettingsDrawer(
                 // Section 4: Dynamic Range & Hardware DCG
                 DrawerSectionTitle("高动态范围与色彩编码 (HDR / DCG)")
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DynamicRangeMode.entries.forEach { dr ->
+                    val supportedDr = if (capabilities.isHlg10Supported) DynamicRangeMode.entries else listOf(DynamicRangeMode.SDR)
+                    supportedDr.forEach { dr ->
                         DrawerTile(
                             title = dr.label,
                             isSelected = settings.dynamicRange == dr,
@@ -177,14 +180,16 @@ fun QuickSettingsDrawer(
                             }
                         )
                     }
-                    DrawerTile(
-                        title = if (settings.dcgHdrEnabled) "高通 DCG: 开启" else "高通 DCG: 关闭",
-                        isSelected = settings.dcgHdrEnabled,
-                        onClick = {
-                            onToggleDcg(!settings.dcgHdrEnabled)
-                            hapticManager.tick()
-                        }
-                    )
+                    if (capabilities.isDcgSupported) {
+                        DrawerTile(
+                            title = if (settings.dcgHdrEnabled) "高通 DCG: 开启" else "高通 DCG: 关闭",
+                            isSelected = settings.dcgHdrEnabled,
+                            onClick = {
+                                onToggleDcg(!settings.dcgHdrEnabled)
+                                hapticManager.tick()
+                            }
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -192,14 +197,16 @@ fun QuickSettingsDrawer(
                 // Section 5: Still Photography & Motion Photo
                 DrawerSectionTitle("静态与动态抓拍 (Stills & Motion Photo)")
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DrawerTile(
-                        title = if (settings.ultraHdrEnabled) "UltraHDR: 开启" else "UltraHDR: 关",
-                        isSelected = settings.ultraHdrEnabled,
-                        onClick = {
-                            onToggleUltraHdr(!settings.ultraHdrEnabled)
-                            hapticManager.tick()
-                        }
-                    )
+                    if (capabilities.isUltraHdrSupported) {
+                        DrawerTile(
+                            title = if (settings.ultraHdrEnabled) "UltraHDR: 开启" else "UltraHDR: 关",
+                            isSelected = settings.ultraHdrEnabled,
+                            onClick = {
+                                onToggleUltraHdr(!settings.ultraHdrEnabled)
+                                hapticManager.tick()
+                            }
+                        )
+                    }
                     MotionDurationPreset.entries.forEach { dur ->
                         DrawerTile(
                             title = dur.label,
