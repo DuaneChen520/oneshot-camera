@@ -1,0 +1,15 @@
+# Machine-specific SDK path — never commit (see tools/bootstrap.sh, which regenerates it)
+local.properties
+
+# Gradle / build outputs
+.gradle/
+build/
+tools/gradle-dist/
+
+# IDE
+.idea/
+*.iml
+.kotlin/
+
+# Captured device artifacts land here deliberately, but raw logs are noisy
+docs/probe/*.log

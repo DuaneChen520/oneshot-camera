@@ -1,0 +1,15 @@
+# core.autocrlf is true on this machine; without this the shell tools come back as CRLF
+# on a fresh clone and Git Bash refuses to run them.
+* text=auto
+*.sh text eol=lf
+*.bat text eol=crlf
+*.kts text
+*.kt text
+*.xml text
+*.md text
+*.pro text
+*.toml text
+
+*.jar binary
+*.apk binary
+*.png binary
