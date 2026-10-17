@@ -306,14 +306,30 @@ private fun GallerySquircleOpticalHatch(
 
             val outerPath = buildSquirclePath(cx, cy, outerA, outerB, n = 3.0f)
 
-            // Outer Recessed Housing Base (Smooth gunmetal tone, NO hard outline strokes)
+            // Outer Housing Base (Anodized Satin Gunmetal Titanium - Distinct yet restrained)
             drawPath(
                 path = outerPath,
                 brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF26242B), Color(0xFF16151A), Color(0xFF0C0B0F)),
-                    center = Offset(cx, cy),
+                    colors = listOf(Color(0xFF3D3A4A), Color(0xFF282633), Color(0xFF17161F)),
+                    center = Offset(cx - 2.dp.toPx(), cy - 2.dp.toPx()),
                     radius = outerA
                 )
+            )
+
+            // Outer Bezel CNC 45° Diamond Chamfer Rim (Top-left glint, bottom-right shade)
+            drawPath(
+                path = outerPath,
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.35f),
+                        Color.White.copy(alpha = 0.12f),
+                        Color(0x30000000),
+                        Color(0x60000000)
+                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(w, h)
+                ),
+                style = Stroke(width = 0.75.dp.toPx())
             )
 
             // Deep mechanical borehole well (Seamless dark shadow moat)
@@ -323,7 +339,7 @@ private fun GallerySquircleOpticalHatch(
             drawPath(
                 path = borePath,
                 brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF060508), Color(0xFF010102)),
+                    colors = listOf(Color(0xFF09080E), Color(0xFF020205)),
                     center = Offset(cx, cy),
                     radius = boreA
                 )
@@ -524,6 +540,7 @@ private fun MechanicalSquircleSlideSwitch(
         modifier = modifier
             .size(50.dp)
             .alpha(if (enabled) 1.0f else 0.35f)
+            .scale(zScale)
             .clickable(
                 enabled = enabled,
                 interactionSource = interactionSource,
@@ -532,99 +549,45 @@ private fun MechanicalSquircleSlideSwitch(
             ),
         contentAlignment = Alignment.Center
     ) {
-        // =========================================================================
-        // 1. FIXED RIGID OUTER CHASSIS RECESS (Strictly 1:1 Mirror with Album Hatch)
-        // =========================================================================
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
             val cx = w / 2f
             val cy = h / 2f
-            val outerA = cx - 1.dp.toPx()
-            val outerB = cy - 1.dp.toPx()
 
-            val outerPath = buildSquirclePath(cx, cy, outerA, outerB, n = 3.0f)
+            // =====================================================================
+            // 1. UPPER STENCIL STAGE: DUAL MODE ICONS & DIFFUSE LED BACKLIGHT
+            // Laser-etched directly onto chassis, vertically centered in 50dp bounds
+            // =====================================================================
+            val iconY = cy - 9.8.dp.toPx()
+            val landX = cx - 7.5.dp.toPx() // Left stop alignment
+            val portX = cx + 7.5.dp.toPx() // Right stop alignment
+            val yBase = iconY + 2.2.dp.toPx() // Shared ground baseline for both icons
 
-            // Outer Recessed Housing Base (Smooth gunmetal tone, NO hard outline strokes)
-            drawPath(
-                path = outerPath,
-                brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF26242B), Color(0xFF16151A), Color(0xFF0C0B0F)),
-                    center = Offset(cx, cy),
-                    radius = outerA
-                )
-            )
-
-            // Deep mechanical borehole well (Seamless dark shadow moat)
-            val boreA = outerA - 2.4.dp.toPx()
-            val boreB = outerB - 2.4.dp.toPx()
-            val borePath = buildSquirclePath(cx, cy, boreA, boreB, n = 3.0f)
-            drawPath(
-                path = borePath,
-                brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF060508), Color(0xFF010102)),
-                    center = Offset(cx, cy),
-                    radius = boreA
-                )
-            )
-        }
-
-        // =========================================================================
-        // 2. MOVING INNER RECESSED CHAMBER (44dp, Pure Z-axis travel: scale 1.0 -> 0.95)
-        // =========================================================================
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .scale(zScale)
-                .clip(SquircleShape(n = 3.0f))
-                .background(Color(0xFF0E0D13)),
-            contentAlignment = Alignment.Center
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val w = size.width
-                val h = size.height
-                val cx = w / 2f
-                val cy = h / 2f
-
-                // Chamber Bed Radial Shading (Subtle deep-well depth from top-left lighting)
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(Color(0xFF16151D), Color(0xFF0D0C13), Color(0xFF07060A)),
-                        center = Offset(cx - 2.dp.toPx(), cy - 2.dp.toPx()),
-                        radius = cx
-                    ),
-                    radius = cx,
-                    center = Offset(cx, cy)
-                )
-
-                // =====================================================================
-                // 2.1 UPPER STENCIL STAGE: DUAL MODE ICONS & DIFFUSE LED BACKLIGHT
-                // Placed strictly above the slide track, perfectly aligned with stops
-                // =====================================================================
-                val iconY = 12.2.dp.toPx()
-                val landX = cx - 7.5.dp.toPx() // Left stop alignment
-                val portX = cx + 7.5.dp.toPx() // Right stop alignment
+                // Unselected laser-engraving titanium color (high visibility solid matte metal)
+                val unselectedEngravingColor = Color(0xFF9492A2)
+                val unselectedShadeColor = Color(0xFF767484)
 
                 // ---------------------------------------------------------------------
                 // (A) LEFT: Landscape Mode (Alpine Mountain Range & Decisive Sun Pip)
+                // Total bounding box: Width 8.4dp, Height ~5.8dp
                 // ---------------------------------------------------------------------
-                val yBase = iconY + 2.0.dp.toPx()
-                val leftFace = Path().apply {
-                    moveTo(landX - 3.8.dp.toPx(), yBase)
-                    lineTo(landX - 1.2.dp.toPx(), iconY - 2.2.dp.toPx())
-                    lineTo(landX - 0.3.dp.toPx(), yBase)
+                val leftPeakLit = Path().apply {
+                    moveTo(landX - 4.2.dp.toPx(), yBase)
+                    lineTo(landX - 1.2.dp.toPx(), iconY - 2.4.dp.toPx())
+                    lineTo(landX - 0.2.dp.toPx(), yBase)
                     close()
                 }
-                val shadeFace = Path().apply {
-                    moveTo(landX - 1.2.dp.toPx(), iconY - 2.2.dp.toPx())
-                    lineTo(landX + 0.8.dp.toPx(), yBase)
-                    lineTo(landX - 0.3.dp.toPx(), yBase)
+                val leftPeakShaded = Path().apply {
+                    moveTo(landX - 1.2.dp.toPx(), iconY - 2.4.dp.toPx())
+                    lineTo(landX + 0.6.dp.toPx(), yBase)
+                    lineTo(landX - 0.2.dp.toPx(), yBase)
                     close()
                 }
                 val rightPeak = Path().apply {
-                    moveTo(landX + 0.4.dp.toPx(), yBase)
-                    lineTo(landX + 2.3.dp.toPx(), iconY - 1.1.dp.toPx())
-                    lineTo(landX + 3.8.dp.toPx(), yBase)
+                    moveTo(landX + 0.5.dp.toPx(), yBase)
+                    lineTo(landX + 2.4.dp.toPx(), iconY - 1.1.dp.toPx())
+                    lineTo(landX + 4.2.dp.toPx(), yBase)
                     close()
                 }
 
@@ -637,18 +600,18 @@ private fun MechanicalSquircleSlideSwitch(
                             0.78f to Color(0x0C00E5FF),
                             1.00f to Color.Transparent,
                             center = Offset(landX, iconY),
-                            radius = 7.5.dp.toPx()
+                            radius = 8.0.dp.toPx()
                         ),
-                        radius = 7.5.dp.toPx(),
+                        radius = 8.0.dp.toPx(),
                         center = Offset(landX, iconY)
                     )
 
                     val sunlitColor = Color.White.copy(alpha = 0.98f * lightOcclusion)
-                    val shadeColor = Color(0xFFD6DBE4).copy(alpha = 0.72f * lightOcclusion)
-                    val subPeakColor = Color.White.copy(alpha = 0.90f * lightOcclusion)
+                    val shadeColor = Color(0xFFD6DBE4).copy(alpha = 0.76f * lightOcclusion)
+                    val subPeakColor = Color.White.copy(alpha = 0.92f * lightOcclusion)
 
-                    drawPath(path = leftFace, color = sunlitColor)
-                    drawPath(path = shadeFace, color = shadeColor)
+                    drawPath(path = leftPeakLit, color = sunlitColor)
+                    drawPath(path = leftPeakShaded, color = shadeColor)
                     drawPath(path = rightPeak, color = subPeakColor)
 
                     // Sun / aperture pip
@@ -659,50 +622,54 @@ private fun MechanicalSquircleSlideSwitch(
                     )
                     // Baseline grounding bar
                     drawLine(
-                        color = sunlitColor.copy(alpha = 0.75f),
-                        start = Offset(landX - 4.0.dp.toPx(), yBase + 0.4.dp.toPx()),
-                        end = Offset(landX + 4.0.dp.toPx(), yBase + 0.4.dp.toPx()),
+                        color = sunlitColor.copy(alpha = 0.85f),
+                        start = Offset(landX - 4.2.dp.toPx(), yBase + 0.4.dp.toPx()),
+                        end = Offset(landX + 4.2.dp.toPx(), yBase + 0.4.dp.toPx()),
                         strokeWidth = 0.65.dp.toPx(),
                         cap = StrokeCap.Round
                     )
                 } else {
-                    // Inactive state: Muted matte-gray chassis laser engraving (Zero glow)
-                    val mutedPaint = Color(0x408E95A5)
-                    val mutedShade = Color(0x288E95A5)
-
-                    drawPath(path = leftFace, color = mutedPaint)
-                    drawPath(path = shadeFace, color = mutedShade)
-                    drawPath(path = rightPeak, color = mutedShade)
+                    // Inactive state: Solid, crisp laser-etched titanium engraving (NO glow, highly visible)
+                    drawPath(path = leftPeakLit, color = unselectedEngravingColor)
+                    drawPath(path = leftPeakShaded, color = unselectedShadeColor)
+                    drawPath(path = rightPeak, color = unselectedEngravingColor)
 
                     drawCircle(
-                        color = mutedPaint,
-                        radius = 0.75.dp.toPx(),
+                        color = unselectedEngravingColor,
+                        radius = 0.85.dp.toPx(),
                         center = Offset(landX + 2.5.dp.toPx(), iconY - 2.6.dp.toPx())
                     )
                     drawLine(
-                        color = mutedPaint.copy(alpha = 0.45f),
-                        start = Offset(landX - 4.0.dp.toPx(), yBase + 0.4.dp.toPx()),
-                        end = Offset(landX + 4.0.dp.toPx(), yBase + 0.4.dp.toPx()),
-                        strokeWidth = 0.55.dp.toPx(),
+                        color = unselectedShadeColor,
+                        start = Offset(landX - 4.2.dp.toPx(), yBase + 0.4.dp.toPx()),
+                        end = Offset(landX + 4.2.dp.toPx(), yBase + 0.4.dp.toPx()),
+                        strokeWidth = 0.65.dp.toPx(),
                         cap = StrokeCap.Round
                     )
                 }
 
                 // ---------------------------------------------------------------------
                 // (B) RIGHT: Portrait Mode (Classical Cameo Silhouette Bust)
+                // Total bounding box: Width 8.4dp (identical to landscape), Height ~5.8dp
+                // Head: center (portX, iconY - 1.35dp), radius 1.65dp (diameter 3.3dp)
+                // Shoulders: from portX - 4.2dp to portX + 4.2dp, resting on yBase
                 // ---------------------------------------------------------------------
+                val headCenterY = iconY - 1.35.dp.toPx()
+                val headRadius = 1.65.dp.toPx()
+
                 val bustSilhouette = Path().apply {
-                    moveTo(portX - 1.1.dp.toPx(), iconY + 0.2.dp.toPx())
+                    val neckY = iconY + 0.65.dp.toPx()
+                    moveTo(portX - 1.2.dp.toPx(), neckY)
                     cubicTo(
-                        portX - 2.2.dp.toPx(), iconY + 0.3.dp.toPx(),
-                        portX - 3.4.dp.toPx(), iconY + 1.0.dp.toPx(),
-                        portX - 3.7.dp.toPx(), iconY + 2.1.dp.toPx()
+                        portX - 2.4.dp.toPx(), iconY + 0.85.dp.toPx(),
+                        portX - 3.7.dp.toPx(), iconY + 1.5.dp.toPx(),
+                        portX - 4.2.dp.toPx(), yBase
                     )
-                    lineTo(portX + 3.7.dp.toPx(), iconY + 2.1.dp.toPx())
+                    lineTo(portX + 4.2.dp.toPx(), yBase)
                     cubicTo(
-                        portX + 3.4.dp.toPx(), iconY + 1.0.dp.toPx(),
-                        portX + 2.2.dp.toPx(), iconY + 0.3.dp.toPx(),
-                        portX + 1.1.dp.toPx(), iconY + 0.2.dp.toPx()
+                        portX + 3.7.dp.toPx(), iconY + 1.5.dp.toPx(),
+                        portX + 2.4.dp.toPx(), iconY + 0.85.dp.toPx(),
+                        portX + 1.2.dp.toPx(), neckY
                     )
                     close()
                 }
@@ -711,121 +678,137 @@ private fun MechanicalSquircleSlideSwitch(
                     // Physical warm-amber diffused LED backlight glow
                     drawCircle(
                         brush = Brush.radialGradient(
-                            0.00f to Color(0x75FDE68A),
-                            0.45f to Color(0x35F59E0B),
-                            0.78f to Color(0x10D97706),
+                            0.00f to Color(0x80FDE68A),
+                            0.45f to Color(0x38F59E0B),
+                            0.78f to Color(0x12D97706),
                             1.00f to Color.Transparent,
                             center = Offset(portX, iconY),
-                            radius = 7.5.dp.toPx()
+                            radius = 8.0.dp.toPx()
                         ),
-                        radius = 7.5.dp.toPx(),
+                        radius = 8.0.dp.toPx(),
                         center = Offset(portX, iconY)
                     )
 
                     val portGlowColor = OneShotTheme.AmberGrain.copy(alpha = 0.98f * lightOcclusion)
-                    // Head
+                    // Head: solid full circular cameo
                     drawCircle(
                         color = portGlowColor,
-                        radius = 1.45.dp.toPx(),
-                        center = Offset(portX, iconY - 1.8.dp.toPx())
+                        radius = headRadius,
+                        center = Offset(portX, headCenterY)
                     )
                     // Shoulders / bust silhouette
                     drawPath(
                         path = bustSilhouette,
                         color = portGlowColor.copy(alpha = 0.94f)
                     )
+                    // Baseline grounding bar (matching Landscape)
+                    drawLine(
+                        color = portGlowColor.copy(alpha = 0.85f),
+                        start = Offset(portX - 4.2.dp.toPx(), yBase + 0.4.dp.toPx()),
+                        end = Offset(portX + 4.2.dp.toPx(), yBase + 0.4.dp.toPx()),
+                        strokeWidth = 0.65.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
                 } else {
-                    // Inactive state: Muted matte-gray chassis laser engraving (Zero glow)
-                    val mutedPaint = Color(0x408E95A5)
+                    // Inactive state: Solid, crisp laser-etched titanium engraving (NO glow, perfectly visible)
+                    // Head is completely solid and easily recognizable!
                     drawCircle(
-                        color = mutedPaint,
-                        radius = 1.3.dp.toPx(),
-                        center = Offset(portX, iconY - 1.8.dp.toPx())
+                        color = unselectedEngravingColor,
+                        radius = headRadius,
+                        center = Offset(portX, headCenterY)
                     )
                     drawPath(
                         path = bustSilhouette,
-                        color = mutedPaint.copy(alpha = 0.70f)
+                        color = unselectedEngravingColor
+                    )
+                    drawLine(
+                        color = unselectedShadeColor,
+                        start = Offset(portX - 4.2.dp.toPx(), yBase + 0.4.dp.toPx()),
+                        end = Offset(portX + 4.2.dp.toPx(), yBase + 0.4.dp.toPx()),
+                        strokeWidth = 0.65.dp.toPx(),
+                        cap = StrokeCap.Round
                     )
                 }
 
-                // =====================================================================
-                // 2.2 LOWER RECESSED SLIDE BAY (Machined Horizontal Channel)
-                // =====================================================================
-                val trackY = 27.5.dp.toPx()
-                val trackW = 31.0.dp.toPx()
-                val trackH = 14.0.dp.toPx()
-                val trackCorner = 3.0.dp.toPx()
-
-                val trackLeft = cx - trackW / 2f
-                val trackTop = trackY - trackH / 2f
-                val trackRect = Rect(trackLeft, trackTop, trackLeft + trackW, trackTop + trackH)
-
-                // 2.2.1 Deep Machined Channel Cavity (Dark Moat Well)
-                drawRoundRect(
-                    brush = Brush.linearGradient(
-                        colors = listOf(Color(0xFF040406), Color(0xFF0A090F), Color(0xFF100F15)),
-                        start = Offset(trackLeft, trackTop),
-                        end = Offset(trackLeft, trackTop + trackH)
-                    ),
-                    topLeft = trackRect.topLeft,
-                    size = trackRect.size,
-                    cornerRadius = CornerRadius(trackCorner, trackCorner)
-                )
-
-                // 2.2.2 Channel Upper Wall Drop Shadow
-                drawRoundRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color(0x90000000), Color(0x30000000), Color.Transparent),
-                        startY = trackTop,
-                        endY = trackTop + 3.0.dp.toPx()
-                    ),
-                    topLeft = trackRect.topLeft,
-                    size = trackRect.size,
-                    cornerRadius = CornerRadius(trackCorner, trackCorner)
-                )
-
-                // 2.2.3 Channel Bottom Rail Specular Edge
-                drawRoundRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color(0x20FFFFFF).copy(alpha = 0.15f * lightOcclusion)),
-                        startY = trackTop + trackH - 1.5.dp.toPx(),
-                        endY = trackTop + trackH
-                    ),
-                    topLeft = trackRect.topLeft,
-                    size = trackRect.size,
-                    cornerRadius = CornerRadius(trackCorner, trackCorner)
-                )
-
-                // 2.2.4 Machined Slide Rail Track Lines (Horizontal Guide Rails)
-                val railY1 = trackY - 2.8.dp.toPx()
-                val railY2 = trackY + 2.8.dp.toPx()
-                drawLine(
-                    color = Color(0x18FFFFFF),
-                    start = Offset(trackLeft + 2.dp.toPx(), railY1),
-                    end = Offset(trackLeft + trackW - 2.dp.toPx(), railY1),
-                    strokeWidth = 0.5.dp.toPx()
-                )
-                drawLine(
-                    color = Color(0x18FFFFFF),
-                    start = Offset(trackLeft + 2.dp.toPx(), railY2),
-                    end = Offset(trackLeft + trackW - 2.dp.toPx(), railY2),
-                    strokeWidth = 0.5.dp.toPx()
-                )
-
-                // 2.2.5 Ball-Detent Mechanical Travel Stops (Left & Right indents)
-                drawCircle(color = Color(0xFF060509), radius = 1.0.dp.toPx(), center = Offset(landX, trackY))
-                drawCircle(color = Color(0xFF060509), radius = 1.0.dp.toPx(), center = Offset(portX, trackY))
-            }
-
             // =====================================================================
-            // 2.3 SOLID METAL SLIDER PLUNGER (Cold-Rolled Satin Titanium Block)
-            // Slides horizontally between -7.5dp (Left) and +7.5dp (Right)
+            // 2. LOWER RECESSED SLIDE BAY (Machined Horizontal Channel)
             // =====================================================================
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val w = size.width
-                val h = size.height
-                val cx = w / 2f
-                val trackY = 27.5.dp.toPx()
+            val trackY = cy + 5.5.dp.toPx()
+            val trackW = 31.0.dp.toPx()
+            val trackH = 14.0.dp.toPx()
+            val trackCorner = 3.0.dp.toPx()
+
+            val trackLeft = cx - trackW / 2f
+            val trackTop = trackY - trackH / 2f
+            val trackRect = Rect(trackLeft, trackTop, trackLeft + trackW, trackTop + trackH)
+
+            // 2.1 Deep Machined Channel Cavity (Dark Moat Well)
+            drawRoundRect(
+                brush = Brush.linearGradient(
+                    colors = listOf(Color(0xFF040406), Color(0xFF0A090F), Color(0xFF100F15)),
+                    start = Offset(trackLeft, trackTop),
+                    end = Offset(trackLeft, trackTop + trackH)
+                ),
+                topLeft = trackRect.topLeft,
+                size = trackRect.size,
+                cornerRadius = CornerRadius(trackCorner, trackCorner)
+            )
+
+            // 2.2 Channel Upper Wall Drop Shadow
+            drawRoundRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color(0x90000000), Color(0x30000000), Color.Transparent),
+                    startY = trackTop,
+                    endY = trackTop + 3.0.dp.toPx()
+                ),
+                topLeft = trackRect.topLeft,
+                size = trackRect.size,
+                cornerRadius = CornerRadius(trackCorner, trackCorner)
+            )
+
+            // 2.3 Channel Bottom Rail Specular Edge
+            drawRoundRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color(0x20FFFFFF).copy(alpha = 0.15f * lightOcclusion)),
+                    startY = trackTop + trackH - 1.5.dp.toPx(),
+                    endY = trackTop + trackH
+                ),
+                topLeft = trackRect.topLeft,
+                size = trackRect.size,
+                cornerRadius = CornerRadius(trackCorner, trackCorner)
+            )
+
+            // 2.4 Machined Slide Rail Track Lines (Horizontal Guide Rails)
+            val railY1 = trackY - 2.8.dp.toPx()
+            val railY2 = trackY + 2.8.dp.toPx()
+            drawLine(
+                color = Color(0x18FFFFFF),
+                start = Offset(trackLeft + 2.dp.toPx(), railY1),
+                end = Offset(trackLeft + trackW - 2.dp.toPx(), railY1),
+                strokeWidth = 0.5.dp.toPx()
+            )
+            drawLine(
+                color = Color(0x18FFFFFF),
+                start = Offset(trackLeft + 2.dp.toPx(), railY2),
+                end = Offset(trackLeft + trackW - 2.dp.toPx(), railY2),
+                strokeWidth = 0.5.dp.toPx()
+            )
+
+            // 2.5 Ball-Detent Mechanical Travel Stops (Left & Right indents)
+            drawCircle(color = Color(0xFF060509), radius = 1.0.dp.toPx(), center = Offset(landX, trackY))
+            drawCircle(color = Color(0xFF060509), radius = 1.0.dp.toPx(), center = Offset(portX, trackY))
+        }
+
+        // =====================================================================
+        // 3. SOLID METAL SLIDER PLUNGER (Cold-Rolled Satin Titanium Block)
+        // Slides horizontally between -7.5dp (Left) and +7.5dp (Right)
+        // =====================================================================
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val cx = w / 2f
+            val cy = h / 2f
+            val trackY = cy + 5.5.dp.toPx()
 
                 val sliderOffsetPx = animatedOffsetDp.dp.toPx()
                 val knobCenterX = cx + sliderOffsetPx
@@ -925,7 +908,6 @@ private fun MechanicalSquircleSlideSwitch(
             }
         }
     }
-}
 
 
 /**
