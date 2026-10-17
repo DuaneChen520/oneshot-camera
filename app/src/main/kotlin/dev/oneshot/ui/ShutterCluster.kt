@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -59,10 +60,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
+import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sign
 import kotlin.math.sin
+import androidx.compose.ui.graphics.StrokeJoin
 import dev.oneshot.camera.MediaThumbnail
 import dev.oneshot.camera.RecordingStatus
+import dev.oneshot.data.LensFacingMode
 import dev.oneshot.ui.theme.OneShotTheme
 
 @Composable
@@ -74,6 +86,7 @@ fun ShutterCluster(
     onStopRecording: () -> Unit,
     onFlipCamera: () -> Unit,
     onOpenGallery: () -> Unit,
+    lensFacing: LensFacingMode = LensFacingMode.BACK,
     latestMedia: MediaThumbnail? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -145,103 +158,12 @@ fun ShutterCluster(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Far Left: Optical Viewfinder (OVF) Gallery Window (No Bulky Borders)
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(OneShotTheme.ChassisDark)
-                    .border(
-                        width = 1.dp,
-                        color = if (latestMedia?.bitmap != null) OneShotTheme.AmberGrain.copy(alpha = 0.8f) else OneShotTheme.ChassisBorder,
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .clickable(
-                        enabled = !status.isRecording && !status.isMotionCapturing,
-                        onClick = onOpenGallery
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (latestMedia?.bitmap != null) {
-                    Image(
-                        bitmap = latestMedia.bitmap.asImageBitmap(),
-                        contentDescription = "最近底片 (取景器视窗)",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    // Viewfinder Etched Frameline Overlay on top of preview
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        val stroke = 1.dp.toPx()
-                        val mark = 6.dp.toPx()
-                        val pad = 4.dp.toPx()
-                        val color = Color.White.copy(alpha = 0.8f)
-                        val w = size.width
-                        val h = size.height
-
-                        // Top-Left corner
-                        drawLine(color, Offset(pad, pad), Offset(pad + mark, pad), stroke)
-                        drawLine(color, Offset(pad, pad), Offset(pad, pad + mark), stroke)
-                        // Top-Right corner
-                        drawLine(color, Offset(w - pad - mark, pad), Offset(w - pad, pad), stroke)
-                        drawLine(color, Offset(w - pad, pad), Offset(w - pad, pad + mark), stroke)
-                        // Bottom-Left corner
-                        drawLine(color, Offset(pad, h - pad), Offset(pad + mark, h - pad), stroke)
-                        drawLine(color, Offset(pad, h - pad), Offset(pad, h - pad - mark), stroke)
-                        // Bottom-Right corner
-                        drawLine(color, Offset(w - pad - mark, h - pad), Offset(w - pad, h - pad), stroke)
-                        drawLine(color, Offset(w - pad, h - pad), Offset(w - pad, h - pad - mark), stroke)
-                    }
-                    if (latestMedia.isVideo) {
-                        Box(
-                            modifier = Modifier
-                                .size(18.dp)
-                                .clip(CircleShape)
-                                .background(Color(0x99000000)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "▶",
-                                color = OneShotTheme.FilmSilver,
-                                fontSize = 9.sp
-                            )
-                        }
-                    }
-                } else {
-                    // Optical Viewfinder Reticle & Brightlines
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        val stroke = 1.dp.toPx()
-                        val mark = 6.dp.toPx()
-                        val pad = 5.dp.toPx()
-                        val color = OneShotTheme.FilmSilver.copy(alpha = 0.85f)
-                        val w = size.width
-                        val h = size.height
-
-                        // Corner Framelines
-                        drawLine(color, Offset(pad, pad), Offset(pad + mark, pad), stroke)
-                        drawLine(color, Offset(pad, pad), Offset(pad, pad + mark), stroke)
-                        drawLine(color, Offset(w - pad - mark, pad), Offset(w - pad, pad), stroke)
-                        drawLine(color, Offset(w - pad, pad), Offset(w - pad, pad + mark), stroke)
-                        drawLine(color, Offset(pad, h - pad), Offset(pad + mark, h - pad), stroke)
-                        drawLine(color, Offset(pad, h - pad), Offset(pad, h - pad - mark), stroke)
-                        drawLine(color, Offset(w - pad - mark, h - pad), Offset(w - pad, h - pad), stroke)
-                        drawLine(color, Offset(w - pad, h - pad), Offset(w - pad, h - pad - mark), stroke)
-
-                        // Center Rangefinder Crosshair
-                        val cx = w / 2f
-                        val cy = h / 2f
-                        val reticle = 3.dp.toPx()
-                        drawLine(color.copy(alpha = 0.6f), Offset(cx - reticle, cy), Offset(cx + reticle, cy), stroke * 0.8f)
-                        drawLine(color.copy(alpha = 0.6f), Offset(cx, cy - reticle), Offset(cx, cy + reticle), stroke * 0.8f)
-
-                        // Top-Right Phosphor Green Ready Dot
-                        drawCircle(
-                            color = Color(0xFF10B981),
-                            radius = 2.dp.toPx(),
-                            center = Offset(w - pad - 2.dp.toPx(), pad + 2.dp.toPx())
-                        )
-                    }
-                }
-            }
+            // Far Left: Skeuomorphic Optical Inspection Squircle Hatch (Gallery Jump)
+            GallerySquircleOpticalHatch(
+                latestMedia = latestMedia,
+                enabled = !status.isRecording && !status.isMotionCapturing,
+                onClick = onOpenGallery
+            )
 
             // Left Shutter: Motion Photo (Live Emulsion Shutter with concentric rings)
             MotionPhotoShutterButton(
@@ -266,8 +188,9 @@ fun ShutterCluster(
                 }
             )
 
-            // Far Right: Skeuomorphic PL Cinema Lens Mount Flip Button
-            LensMountFlipButton(
+            // Far Right: Leica M-Style Mechanical Frame Selector Lever (-35° Landscape <-> +35° Portrait)
+            LeicaSquircleFrameSelectorLever(
+                lensFacing = lensFacing,
                 enabled = !status.isRecording && !status.isMotionCapturing,
                 onClick = onFlipCamera
             )
@@ -276,199 +199,840 @@ fun ShutterCluster(
 }
 
 /**
- * Far Right: Skeuomorphic PL Cinema Lens Mount Flip Button.
- * Replicates the Arri/Cooke PL positive lock bayonet flange:
- * - Machined titanium-steel base with 3 locking lugs at 120°
- * - 4 precision Torx fastening screws
- * - Anti-reflective coated optical glass core (magenta / cyan iridescent reflection)
- * - Tactile 180° rotation detent on tap
+ * Continuous-Curvature Superellipse (Squircle) Shape.
+ * Implements Kenya Hara's Xiaomi Alive formula: |x/a|^n + |y/b|^n = 1 with n = 3.0.
+ * Eliminates harsh robotic straight-to-arc joints with completely continuous G2 curvature.
+ */
+class SquircleShape(private val n: Float = 3.0f) : Shape {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density
+    ): Outline {
+        val a = size.width / 2f
+        val b = size.height / 2f
+        val path = buildSquirclePath(cx = a, cy = b, a = a, b = b, n = n)
+        return Outline.Generic(path)
+    }
+}
+
+private fun buildSquirclePath(
+    cx: Float,
+    cy: Float,
+    a: Float,
+    b: Float,
+    n: Float = 3.0f,
+    steps: Int = 72
+): Path {
+    val path = Path()
+    val exponent = 2f / n
+    for (i in 0 until steps) {
+        val theta = (i * 2.0 * Math.PI / steps).toFloat()
+        val cosT = cos(theta)
+        val sinT = sin(theta)
+        val x = cx + a * cosT.sign * abs(cosT).pow(exponent)
+        val y = cy + b * sinT.sign * abs(sinT).pow(exponent)
+        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    path.close()
+    return path
+}
+
+/**
+ * Far Left: Skeuomorphic Optical Viewfinder Hatch (Gallery Jump Button).
+ * Recreates the authentic optical viewfinder feel of classic Fujifilm point-and-shoot cameras:
+ * - Organic Continuous-Curvature Superellipse (Xiaomi Alive n = 3.0)
+ * - Pure Z-axis mechanical travel: perspective scale depression (1.0 -> 0.95), ZERO unnatural Y-axis translation
+ * - Fujifilm Viewfinder Optical Aberration:
+ *   - Crystal clear central transmission
+ *   - Four-corner diffuse light scattering & soft peripheral lens haze (milky-cyan optical dispersion)
+ *   - Natural optical corner vignetting & light falloff
+ *   - Completely removed artificial glare streaks & perimeter wireframe strokes
+ * - Standby: Deep obsidian optical cavity with 6-blade aperture diaphragm
+ * - Instant micro-switch tactile snap on touch-down (HapticFeedbackConstants.CONFIRM)
  */
 @Composable
-private fun LensMountFlipButton(
+private fun GallerySquircleOpticalHatch(
+    latestMedia: MediaThumbnail?,
     enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var targetRotation by remember { mutableFloatStateOf(0f) }
-    val animatedRotation by animateFloatAsState(
-        targetValue = targetRotation,
-        animationSpec = spring(dampingRatio = 0.55f, stiffness = 320f),
-        label = "plMountRotation"
-    )
-
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.88f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
-        label = "plMountScale"
+    val view = LocalView.current
+
+    // Instant tactile micro-switch haptic snap on touch-down
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+        }
+    }
+
+    // Pure Z-Axis mechanical borehole depression: 0.0f (rest) -> 1.0f (recessed into housing)
+    val depression by animateFloatAsState(
+        targetValue = if (isPressed) 1.0f else 0.0f,
+        animationSpec = spring(
+            dampingRatio = 0.65f,
+            stiffness = 750f
+        ),
+        label = "galleryHatchDepression"
     )
+
+    // True Z-axis perspective compression & light occlusion (NO Y-axis translation)
+    val zScale = 1.0f - (0.05f * depression)
+    val lightOcclusion = 1.0f - (0.18f * depression)
 
     Box(
         modifier = modifier
             .size(50.dp)
-            .scale(scale)
             .alpha(if (enabled) 1.0f else 0.35f)
             .clickable(
                 enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = {
-                    targetRotation += 180f
-                    onClick()
-                }
+                onClick = onClick
             ),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(
-            modifier = Modifier
-                .fillMaxSize()
-                .rotate(animatedRotation)
-        ) {
+        // 1. FIXED RIGID OUTER CHASSIS RECESS (Zero hard wireframe stroke lines)
+        Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
             val cx = w / 2f
             val cy = h / 2f
-            val baseRadius = w * 0.44f
+            val outerA = cx - 1.dp.toPx()
+            val outerB = cy - 1.dp.toPx()
 
-            // 1. Dark titanium outer flange base
-            drawCircle(
+            val outerPath = buildSquirclePath(cx, cy, outerA, outerB, n = 3.0f)
+
+            // Outer Recessed Housing Base (Smooth gunmetal tone, NO hard outline strokes)
+            drawPath(
+                path = outerPath,
                 brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF2E2C33), Color(0xFF141318)),
+                    colors = listOf(Color(0xFF26242B), Color(0xFF16151A), Color(0xFF0C0B0F)),
                     center = Offset(cx, cy),
-                    radius = baseRadius
-                ),
-                radius = baseRadius,
-                center = Offset(cx, cy)
-            )
-            drawCircle(
-                color = Color(0xFF4A4652),
-                radius = baseRadius,
-                center = Offset(cx, cy),
-                style = Stroke(width = 1.2.dp.toPx())
+                    radius = outerA
+                )
             )
 
-            // 2. Three Stainless Steel Locking Lugs at 120° intervals (-90°, 30°, 150°)
-            val lugColor = Color(0xFFC0C0C8)
-            val lugBorder = Color(0xFF5E5E68)
-            val lugAngles = listOf(-90f, 30f, 150f)
-            for (angleDeg in lugAngles) {
-                val rad = Math.toRadians(angleDeg.toDouble())
-                val lugDist = baseRadius * 0.98f
-                val lx = cx + (lugDist * cos(rad)).toFloat()
-                val ly = cy + (lugDist * sin(rad)).toFloat()
+            // Deep mechanical borehole well (Seamless dark shadow moat)
+            val boreA = outerA - 2.4.dp.toPx()
+            val boreB = outerB - 2.4.dp.toPx()
+            val borePath = buildSquirclePath(cx, cy, boreA, boreB, n = 3.0f)
+            drawPath(
+                path = borePath,
+                brush = Brush.radialGradient(
+                    colors = listOf(Color(0xFF060508), Color(0xFF010102)),
+                    center = Offset(cx, cy),
+                    radius = boreA
+                )
+            )
+        }
 
-                rotate(degrees = angleDeg + 90f, pivot = Offset(lx, ly)) {
-                    val lugW = 9.dp.toPx()
-                    val lugH = 3.5.dp.toPx()
-                    drawRoundRect(
-                        color = lugColor,
-                        topLeft = Offset(lx - lugW / 2, ly - lugH / 2),
-                        size = Size(lugW, lugH),
-                        cornerRadius = CornerRadius(1.dp.toPx(), 1.dp.toPx())
-                    )
-                    drawRoundRect(
-                        color = lugBorder,
-                        topLeft = Offset(lx - lugW / 2, ly - lugH / 2),
-                        size = Size(lugW, lugH),
-                        cornerRadius = CornerRadius(1.dp.toPx(), 1.dp.toPx()),
-                        style = Stroke(0.6.dp.toPx())
+        // 2. MOVING INNER OPTICAL VIEWFINDER ELEMENT (Pure Z-axis travel: perspective scale, NO Y offset)
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .scale(zScale)
+                .clip(SquircleShape(n = 3.0f))
+                .background(Color(0xFF0A090D)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (latestMedia?.bitmap != null) {
+                // 2.1 Pure uncropped photographic media
+                Image(
+                    bitmap = latestMedia.bitmap.asImageBitmap(),
+                    contentDescription = "最近底片 (光学检视视窗)",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+
+                if (latestMedia.isVideo) {
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clip(CircleShape)
+                            .background(Color(0x99000000)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "▶",
+                            color = OneShotTheme.FilmSilver,
+                            fontSize = 9.sp
+                        )
+                    }
+                }
+            } else {
+                // 2.2 Standby Empty State: Deep Optical Obsidian Chamber with Aperture Diaphragm
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val w = size.width
+                    val h = size.height
+                    val cx = w / 2f
+                    val cy = h / 2f
+                    val r = w * 0.22f
+                    val irisColor = Color(0x66C7C7CC).copy(alpha = 0.45f * lightOcclusion)
+
+                    // 6-Blade Precision Aperture Diaphragm
+                    val bladeCount = 6
+                    for (i in 0 until bladeCount) {
+                        val angleDeg = i * (360f / bladeCount)
+                        val rad = Math.toRadians(angleDeg.toDouble())
+                        val nextRad = Math.toRadians((angleDeg + 60f).toDouble())
+                        val x1 = cx + (r * cos(rad)).toFloat()
+                        val y1 = cy + (r * sin(rad)).toFloat()
+                        val x2 = cx + (r * 0.5f * cos(nextRad)).toFloat()
+                        val y2 = cy + (r * 0.5f * sin(nextRad)).toFloat()
+                        drawLine(
+                            color = irisColor,
+                            start = Offset(x1, y1),
+                            end = Offset(x2, y2),
+                            strokeWidth = 1.0.dp.toPx()
+                        )
+                    }
+                    drawCircle(
+                        color = Color(0x22FFFFFF),
+                        radius = r * 0.35f,
+                        center = Offset(cx, cy)
                     )
                 }
             }
 
-            // 3. Inner Machined Flange Face
-            val innerRadius = w * 0.35f
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF1F1E24), Color(0xFF0F0E12)),
-                    center = Offset(cx, cy),
-                    radius = innerRadius
-                ),
-                radius = innerRadius,
-                center = Offset(cx, cy)
-            )
-            drawCircle(
-                color = Color(0xFF38363F),
-                radius = innerRadius,
-                center = Offset(cx, cy),
-                style = Stroke(width = 0.8.dp.toPx())
-            )
+            // 2.3 FUJIFILM VIEWFINDER OPTICAL DISPERSION & CORNER DIFFUSE SCATTERING
+            // (Recreates the vintage meniscus viewfinder lens: clear center + soft corner haze + peripheral falloff)
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val cx = w / 2f
+                val cy = h / 2f
+                val maxDim = maxOf(w, h)
 
-            // 4. Four Precision Torx Screw Heads at 45°, 135°, 225°, 315°
-            val screwAngles = listOf(45f, 135f, 225f, 315f)
-            val screwDist = innerRadius * 0.82f
-            for (angleDeg in screwAngles) {
-                val rad = Math.toRadians(angleDeg.toDouble())
-                val sx = cx + (screwDist * cos(rad)).toFloat()
-                val sy = cy + (screwDist * sin(rad)).toFloat()
-                drawCircle(
-                    color = Color(0xFF787884),
-                    radius = 1.3.dp.toPx(),
-                    center = Offset(sx, sy)
+                // Pass 1: Fuji Optical Vignetting & Corner Light Falloff
+                // Center is completely transparent (clear view), corners softly fall off
+                drawRect(
+                    brush = Brush.radialGradient(
+                        0.00f to Color.Transparent,
+                        0.42f to Color.Transparent,
+                        0.72f to Color(0x35000000).copy(alpha = 0.25f + 0.15f * depression),
+                        0.88f to Color(0x6508080E).copy(alpha = 0.55f + 0.15f * depression),
+                        1.00f to Color(0x95040408).copy(alpha = 0.80f + 0.15f * depression),
+                        center = Offset(cx, cy),
+                        radius = maxDim * 0.72f
+                    )
                 )
-                drawLine(
-                    color = Color(0xFF28282E),
-                    start = Offset(sx - 0.8.dp.toPx(), sy),
-                    end = Offset(sx + 0.8.dp.toPx(), sy),
-                    strokeWidth = 0.5.dp.toPx()
+
+                // Pass 2: Four-Corner Diffuse Light Scattering & Defocus Haze (Meniscus Acrylic/Glass Dispersion)
+                // Creates that soft dreamy optical flare in the corners
+                drawRect(
+                    brush = Brush.radialGradient(
+                        0.00f to Color.Transparent,
+                        0.48f to Color.Transparent,
+                        0.74f to Color(0x1F00E5FF).copy(alpha = 0.16f * lightOcclusion), // Soft cyan dispersion haze
+                        0.88f to Color(0x1CE0F7FA).copy(alpha = 0.20f * lightOcclusion), // Milky refractive scattering
+                        1.00f to Color(0x14A855F7).copy(alpha = 0.12f * lightOcclusion), // Subtle magenta chromatic edge fringe
+                        center = Offset(cx, cy),
+                        radius = maxDim * 0.70f
+                    )
+                )
+
+                // Pass 3: Subtle Asymmetric Ambient Skylight Sheen (Soft diffuse atmospheric glow, NOT a hard line)
+                drawRect(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.12f * lightOcclusion),
+                            Color.Transparent,
+                            Color.Transparent
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(w * 0.75f, h * 0.75f)
+                    )
                 )
             }
+        }
+    }
+}
 
-            // 5. Optical Multi-Coated Lens Core (Magenta/Cyan/Amber AR coating sheen)
-            val lensRadius = w * 0.24f
-            drawCircle(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0x99A855F7),
-                        Color(0x6606B6D4),
-                        Color(0x33F59E0B)
-                    ),
-                    start = Offset(cx - lensRadius, cy - lensRadius),
-                    end = Offset(cx + lensRadius, cy + lensRadius)
-                ),
-                radius = lensRadius,
-                center = Offset(cx, cy)
-            )
-            drawCircle(
-                color = Color(0x66FFFFFF),
-                radius = lensRadius,
-                center = Offset(cx, cy),
-                style = Stroke(width = 0.75.dp.toPx())
+/**
+ * Far Right: Leica M-Style Mechanical Frame Selector Lever (Squircle Optical Hatch Mirror).
+ * Symmetrical and strictly 1:1 aligned with the Far-Left Gallery Viewfinder Hatch:
+ * - Rigid Outer Housing Base:
+ *   - Continuous-Curvature Superellipse (Xiaomi Alive n = 3.0, 50dp layout footprint)
+ *   - Gunmetal anodized casing matching gallery hatch (outerA = cx - 1dp, boreA = outerA - 2.4dp)
+ *   - Deep mechanical borehole well with seamless dark shadow moat
+ * - Moving Inner Mechanical Chamber (44dp, pure Z-axis travel: perspective scale 1.0 -> 0.95):
+ *   - Hard-anodized obsidian dial bed with precision-milled arc track (-35° to +35°)
+ *   - Dual-Position Laser-Etched Icons & Diffuse LED Backlight:
+ *     - -35° (Landscape / Rear Camera): Solid Chiseled Alpine Twin-Peaks & Sun, Cool Cyan/White LED glow
+ *     - +35° (Portrait / Front Camera): Solid Classical Cameo Bust, Warm Amber LED glow
+ *     - Inactive mode: Muted matte-steel laser engraving on chassis bed
+ * - Central Leica M Frame Selector Lever:
+ *   - Critical Damping (dampingRatio = 1.0f, stiffness = 1400f): ZERO bounce or oscillation, solid mechanical detent snap
+ *   - Floating Lever Drop Shadow: Realistic ambient drop shadow onto the recessed chamber bed
+ *   - Stepped Concentric Pivot Hub: 45° CNC diamond-chamfered titanium collar & vintage slotted brass jewel screw
+ *   - Tapered Machined Lever Arm: Cold-rolled brushed metal finish with specular bevels
+ *   - Classic Teardrop Knurled Finger Grip: Precision horizontal gripping flutes with illuminated index needle & pip
+ *   - Instant micro-switch tactile snap on touch-down (HapticFeedbackConstants.CONFIRM)
+ */
+@Composable
+private fun LeicaSquircleFrameSelectorLever(
+    lensFacing: LensFacingMode,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val isLandscape = lensFacing == LensFacingMode.BACK
+    // -34° pointing to Landscape (left); +34° pointing to Portrait (right)
+    val targetRotation = if (isLandscape) -34f else 34f
+
+    // Heavy mechanical ball-detent snap: dampingRatio = 1.0f (strictly critically damped), zero bounce or overshoot
+    val animatedRotation by animateFloatAsState(
+        targetValue = targetRotation,
+        animationSpec = spring(
+            dampingRatio = 1.0f,
+            stiffness = 1400f
+        ),
+        label = "leicaLeverRotation"
+    )
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val view = LocalView.current
+
+    // Instant tactile micro-switch haptic snap on touch-down
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+        }
+    }
+
+    // Pure Z-Axis mechanical depression: 0.0f (rest) -> 1.0f (pressed down)
+    val depression by animateFloatAsState(
+        targetValue = if (isPressed) 1.0f else 0.0f,
+        animationSpec = spring(
+            dampingRatio = 0.65f,
+            stiffness = 750f
+        ),
+        label = "leicaLeverDepression"
+    )
+
+    val zScale = 1.0f - (0.05f * depression)
+    val lightOcclusion = 1.0f - (0.16f * depression)
+
+    // Layout footprint is strictly 50dp, perfectly matching GallerySquircleOpticalHatch
+    Box(
+        modifier = modifier
+            .size(50.dp)
+            .alpha(if (enabled) 1.0f else 0.35f)
+            .clickable(
+                enabled = enabled,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        // =========================================================================
+        // 1. FIXED RIGID OUTER CHASSIS RECESS (Strictly 1:1 Mirror with Album Hatch)
+        // =========================================================================
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val cx = w / 2f
+            val cy = h / 2f
+            val outerA = cx - 1.dp.toPx()
+            val outerB = cy - 1.dp.toPx()
+
+            val outerPath = buildSquirclePath(cx, cy, outerA, outerB, n = 3.0f)
+
+            // Outer Recessed Housing Base (Smooth gunmetal tone, NO hard outline strokes)
+            drawPath(
+                path = outerPath,
+                brush = Brush.radialGradient(
+                    colors = listOf(Color(0xFF26242B), Color(0xFF16151A), Color(0xFF0C0B0F)),
+                    center = Offset(cx, cy),
+                    radius = outerA
+                )
             )
 
-            // Specular Glare crescent
-            drawLine(
-                brush = Brush.linearGradient(
-                    colors = listOf(Color(0x88FFFFFF), Color(0x00FFFFFF)),
-                    start = Offset(cx - lensRadius * 0.7f, cy - lensRadius * 0.7f),
-                    end = Offset(cx + lensRadius * 0.3f, cy + lensRadius * 0.3f)
-                ),
-                start = Offset(cx - lensRadius * 0.6f, cy - lensRadius * 0.6f),
-                end = Offset(cx + lensRadius * 0.4f, cy - lensRadius * 0.2f),
-                strokeWidth = 1.5.dp.toPx()
+            // Deep mechanical borehole well (Seamless dark shadow moat)
+            val boreA = outerA - 2.4.dp.toPx()
+            val boreB = outerB - 2.4.dp.toPx()
+            val borePath = buildSquirclePath(cx, cy, boreA, boreB, n = 3.0f)
+            drawPath(
+                path = borePath,
+                brush = Brush.radialGradient(
+                    colors = listOf(Color(0xFF060508), Color(0xFF010102)),
+                    center = Offset(cx, cy),
+                    radius = boreA
+                )
             )
         }
 
-        // Center HUD Label: "PL" and curved flip arrow
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+        // =========================================================================
+        // 2. MOVING INNER RECESSED CHAMBER (44dp, Pure Z-axis travel: scale 1.0 -> 0.95)
+        // =========================================================================
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .scale(zScale)
+                .clip(SquircleShape(n = 3.0f))
+                .background(Color(0xFF0E0D13)),
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "↺",
-                color = Color.White.copy(alpha = 0.95f),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Black
-            )
-            Text(
-                text = "PL",
-                color = OneShotTheme.AmberGrain,
-                fontSize = 6.5.sp,
-                fontWeight = FontWeight.ExtraBold,
-                fontFamily = OneShotTheme.MonospaceFont,
-                letterSpacing = 0.5.sp
-            )
+            val rad34 = Math.toRadians(34.0)
+            val sin34 = sin(rad34).toFloat()
+            val cos34 = cos(rad34).toFloat()
+
+            // 2.1 CHAMBER BED: Detent Arc Track, Dual Mode Icons & Backlit LED Glow
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val cx = w / 2f
+                val cy = h * 0.52f // Balanced mechanical pivot center
+
+                // Chamber Bed Radial Shading (Subtle deep-well depth from top-left lighting)
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFF16151D), Color(0xFF0D0C13), Color(0xFF07060A)),
+                        center = Offset(cx - 2.dp.toPx(), cy - 2.dp.toPx()),
+                        radius = cx
+                    ),
+                    radius = cx,
+                    center = Offset(cx, cy)
+                )
+
+                // ---------------------------------------------------------------------
+                // Milled Detent Guide Arc Track (Behind lever tip, radius = 13.0dp)
+                // ---------------------------------------------------------------------
+                val trackRadius = 13.0.dp.toPx()
+                val trackRect = Rect(
+                    left = cx - trackRadius,
+                    top = cy - trackRadius,
+                    right = cx + trackRadius,
+                    bottom = cy + trackRadius
+                )
+                // Detent Trough Shadow
+                drawArc(
+                    color = Color(0x60000000),
+                    startAngle = 232f, // -128°
+                    sweepAngle = 76f,  // spans across -34° to +34°
+                    useCenter = false,
+                    topLeft = trackRect.topLeft,
+                    size = trackRect.size,
+                    style = Stroke(width = 1.6.dp.toPx(), cap = StrokeCap.Round)
+                )
+                // Detent Trough Specular Floor
+                drawArc(
+                    color = Color(0x18FFFFFF),
+                    startAngle = 234f,
+                    sweepAngle = 72f,
+                    useCenter = false,
+                    topLeft = trackRect.topLeft,
+                    size = trackRect.size,
+                    style = Stroke(width = 0.6.dp.toPx(), cap = StrokeCap.Round)
+                )
+
+                // Ball-Detent End Notch Pits (-34° left, +34° right)
+                val pitLeftX = cx - trackRadius * sin34
+                val pitRightX = cx + trackRadius * sin34
+                val pitY = cy - trackRadius * cos34
+
+                drawCircle(color = Color(0xFF060608), radius = 1.2.dp.toPx(), center = Offset(pitLeftX, pitY))
+                drawCircle(color = Color(0xFF060608), radius = 1.2.dp.toPx(), center = Offset(pitRightX, pitY))
+
+                // Bottom 6 o'clock Milled Index Datum Line
+                drawLine(
+                    color = Color(0x35FFFFFF).copy(alpha = 0.25f * lightOcclusion),
+                    start = Offset(cx, cy + 9.0.dp.toPx()),
+                    end = Offset(cx, cy + 13.2.dp.toPx()),
+                    strokeWidth = 0.65.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+                drawLine(
+                    color = Color(0x40000000),
+                    start = Offset(cx - 0.7.dp.toPx(), cy + 9.0.dp.toPx()),
+                    end = Offset(cx - 0.7.dp.toPx(), cy + 13.2.dp.toPx()),
+                    strokeWidth = 0.5.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+
+                // ---------------------------------------------------------------------
+                // Polar Coordinates for Dual Mode Icons (r = 16.8dp at -34° and +34°)
+                // Strictly placed OUTSIDE the lever tip (12.8dp), completely unblocked!
+                // ---------------------------------------------------------------------
+                val iconDist = 16.8.dp.toPx()
+                val landX = cx - iconDist * sin34
+                val landY = cy - iconDist * cos34
+                val portX = cx + iconDist * sin34
+                val portY = cy - iconDist * cos34
+
+                // =====================================================================
+                // LEFT (-34°): Landscape Mode (Alpine Mountain Range & Decisive Sun Pip)
+                // Precision Solid Chiseled Silhouette with Sunlit and Shaded Facets
+                // =====================================================================
+                val yBase = landY + 2.0.dp.toPx()
+                val leftFace = Path().apply {
+                    moveTo(landX - 3.8.dp.toPx(), yBase)
+                    lineTo(landX - 1.2.dp.toPx(), landY - 2.2.dp.toPx())
+                    lineTo(landX - 0.3.dp.toPx(), yBase)
+                    close()
+                }
+                val shadeFace = Path().apply {
+                    moveTo(landX - 1.2.dp.toPx(), landY - 2.2.dp.toPx())
+                    lineTo(landX + 0.8.dp.toPx(), yBase)
+                    lineTo(landX - 0.3.dp.toPx(), yBase)
+                    close()
+                }
+                val rightPeak = Path().apply {
+                    moveTo(landX + 0.4.dp.toPx(), yBase)
+                    lineTo(landX + 2.3.dp.toPx(), landY - 1.1.dp.toPx())
+                    lineTo(landX + 3.8.dp.toPx(), yBase)
+                    close()
+                }
+
+                if (isLandscape) {
+                    // Physical cool-cyan/white diffused LED backlight glow
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            0.00f to Color(0x65A5F3FC),
+                            0.45f to Color(0x2806B6D4),
+                            0.78f to Color(0x0C00E5FF),
+                            1.00f to Color.Transparent,
+                            center = Offset(landX, landY),
+                            radius = 7.5.dp.toPx()
+                        ),
+                        radius = 7.5.dp.toPx(),
+                        center = Offset(landX, landY)
+                    )
+
+                    val sunlitColor = Color.White.copy(alpha = 0.98f * lightOcclusion)
+                    val shadeColor = Color(0xFFD6DBE4).copy(alpha = 0.72f * lightOcclusion)
+                    val subPeakColor = Color.White.copy(alpha = 0.90f * lightOcclusion)
+
+                    drawPath(path = leftFace, color = sunlitColor)
+                    drawPath(path = shadeFace, color = shadeColor)
+                    drawPath(path = rightPeak, color = subPeakColor)
+
+                    // Sun / aperture pip
+                    drawCircle(
+                        color = sunlitColor,
+                        radius = 0.85.dp.toPx(),
+                        center = Offset(landX + 2.5.dp.toPx(), landY - 2.6.dp.toPx())
+                    )
+                    // Baseline grounding bar
+                    drawLine(
+                        color = sunlitColor.copy(alpha = 0.75f),
+                        start = Offset(landX - 4.0.dp.toPx(), yBase + 0.4.dp.toPx()),
+                        end = Offset(landX + 4.0.dp.toPx(), yBase + 0.4.dp.toPx()),
+                        strokeWidth = 0.65.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
+                } else {
+                    // Inactive state: Muted matte-gray chassis laser engraving (Zero glow)
+                    val mutedPaint = Color(0x408E95A5)
+                    val mutedShade = Color(0x288E95A5)
+
+                    drawPath(path = leftFace, color = mutedPaint)
+                    drawPath(path = shadeFace, color = mutedShade)
+                    drawPath(path = rightPeak, color = mutedShade)
+
+                    drawCircle(
+                        color = mutedPaint,
+                        radius = 0.75.dp.toPx(),
+                        center = Offset(landX + 2.5.dp.toPx(), landY - 2.6.dp.toPx())
+                    )
+                    drawLine(
+                        color = mutedPaint.copy(alpha = 0.45f),
+                        start = Offset(landX - 4.0.dp.toPx(), yBase + 0.4.dp.toPx()),
+                        end = Offset(landX + 4.0.dp.toPx(), yBase + 0.4.dp.toPx()),
+                        strokeWidth = 0.55.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
+                }
+
+                // =====================================================================
+                // RIGHT (+34°): Portrait Mode (Classical Cameo Silhouette Bust)
+                // Precision Solid Cameo Silhouette with Head and Tapered Shoulder Contour
+                // =====================================================================
+                val bustSilhouette = Path().apply {
+                    moveTo(portX - 1.1.dp.toPx(), portY + 0.2.dp.toPx())
+                    cubicTo(
+                        portX - 2.2.dp.toPx(), portY + 0.3.dp.toPx(),
+                        portX - 3.4.dp.toPx(), portY + 1.0.dp.toPx(),
+                        portX - 3.7.dp.toPx(), portY + 2.1.dp.toPx()
+                    )
+                    lineTo(portX + 3.7.dp.toPx(), portY + 2.1.dp.toPx())
+                    cubicTo(
+                        portX + 3.4.dp.toPx(), portY + 1.0.dp.toPx(),
+                        portX + 2.2.dp.toPx(), portY + 0.3.dp.toPx(),
+                        portX + 1.1.dp.toPx(), portY + 0.2.dp.toPx()
+                    )
+                    close()
+                }
+
+                if (!isLandscape) {
+                    // Physical warm-amber diffused LED backlight glow
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            0.00f to Color(0x75FDE68A),
+                            0.45f to Color(0x35F59E0B),
+                            0.78f to Color(0x10D97706),
+                            1.00f to Color.Transparent,
+                            center = Offset(portX, portY),
+                            radius = 7.5.dp.toPx()
+                        ),
+                        radius = 7.5.dp.toPx(),
+                        center = Offset(portX, portY)
+                    )
+
+                    val portGlowColor = OneShotTheme.AmberGrain.copy(alpha = 0.98f * lightOcclusion)
+                    // Head
+                    drawCircle(
+                        color = portGlowColor,
+                        radius = 1.45.dp.toPx(),
+                        center = Offset(portX, portY - 1.8.dp.toPx())
+                    )
+                    // Shoulders / bust silhouette
+                    drawPath(
+                        path = bustSilhouette,
+                        color = portGlowColor.copy(alpha = 0.94f)
+                    )
+                } else {
+                    // Inactive state: Muted matte-gray chassis laser engraving (Zero glow)
+                    val mutedPaint = Color(0x408E95A5)
+                    drawCircle(
+                        color = mutedPaint,
+                        radius = 1.3.dp.toPx(),
+                        center = Offset(portX, portY - 1.8.dp.toPx())
+                    )
+                    drawPath(
+                        path = bustSilhouette,
+                        color = mutedPaint.copy(alpha = 0.70f)
+                    )
+                }
+            }
+
+            // 2.2 ROTATING LEICA M MECHANICAL FRAME SELECTOR LEVER
+            // Pure Critical Damping Ball-Detent Snap (-34° <-> +34°)
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .rotate(animatedRotation)
+            ) {
+                val w = size.width
+                val h = size.height
+                val cx = w / 2f
+                val cy = h * 0.52f
+
+                // ---------------------------------------------------------------------
+                // (A) AMBIENT DROP SHADOW (Lever suspended above the chamber bed)
+                // ---------------------------------------------------------------------
+                val shadowOffsetX = 1.0.dp.toPx()
+                val shadowOffsetY = 1.3.dp.toPx()
+                val shadowColor = Color(0x75000000)
+
+                // Arm Shadow
+                val shadowArm = Path().apply {
+                    moveTo(cx - 1.2.dp.toPx() + shadowOffsetX, cy - 3.0.dp.toPx() + shadowOffsetY)
+                    lineTo(cx - 0.9.dp.toPx() + shadowOffsetX, cy - 8.2.dp.toPx() + shadowOffsetY)
+                    lineTo(cx + 0.9.dp.toPx() + shadowOffsetX, cy - 8.2.dp.toPx() + shadowOffsetY)
+                    lineTo(cx + 1.2.dp.toPx() + shadowOffsetX, cy - 3.0.dp.toPx() + shadowOffsetY)
+                    close()
+                }
+                drawPath(path = shadowArm, color = shadowColor)
+
+                // Grip Head Shadow
+                val shadowHead = Path().apply {
+                    moveTo(cx - 1.9.dp.toPx() + shadowOffsetX, cy - 8.2.dp.toPx() + shadowOffsetY)
+                    lineTo(cx - 1.9.dp.toPx() + shadowOffsetX, cy - 11.6.dp.toPx() + shadowOffsetY)
+                    lineTo(cx + shadowOffsetX, cy - 12.8.dp.toPx() + shadowOffsetY)
+                    lineTo(cx + 1.9.dp.toPx() + shadowOffsetX, cy - 11.6.dp.toPx() + shadowOffsetY)
+                    lineTo(cx + 1.9.dp.toPx() + shadowOffsetX, cy - 8.2.dp.toPx() + shadowOffsetY)
+                    close()
+                }
+                drawPath(path = shadowHead, color = shadowColor)
+
+                // ---------------------------------------------------------------------
+                // (B) TAPERED MACHINED LEVER ARM (Satin Titanium / Brushed Steel)
+                // ---------------------------------------------------------------------
+                val armPath = Path().apply {
+                    moveTo(cx - 1.2.dp.toPx(), cy - 3.0.dp.toPx())
+                    lineTo(cx - 0.9.dp.toPx(), cy - 8.2.dp.toPx())
+                    lineTo(cx + 0.9.dp.toPx(), cy - 8.2.dp.toPx())
+                    lineTo(cx + 1.2.dp.toPx(), cy - 3.0.dp.toPx())
+                    close()
+                }
+
+                // Arm Metal Body Shading (Left-lit cold-rolled steel finish)
+                drawPath(
+                    path = armPath,
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFF888696),
+                            Color(0xFFA6A4B6),
+                            Color(0xFF6E6C7C),
+                            Color(0xFF565462)
+                        ),
+                        start = Offset(cx - 1.2.dp.toPx(), cy - 3.0.dp.toPx()),
+                        end = Offset(cx + 1.2.dp.toPx(), cy - 3.0.dp.toPx())
+                    )
+                )
+
+                // Arm Left Specular Chamfer Edge (Highlights direction from top-left)
+                drawLine(
+                    color = Color.White.copy(alpha = 0.45f * lightOcclusion),
+                    start = Offset(cx - 1.2.dp.toPx(), cy - 3.0.dp.toPx()),
+                    end = Offset(cx - 0.9.dp.toPx(), cy - 8.2.dp.toPx()),
+                    strokeWidth = 0.4.dp.toPx()
+                )
+                // Arm Right Shade Edge
+                drawLine(
+                    color = Color(0x40000000),
+                    start = Offset(cx + 1.2.dp.toPx(), cy - 3.0.dp.toPx()),
+                    end = Offset(cx + 0.9.dp.toPx(), cy - 8.2.dp.toPx()),
+                    strokeWidth = 0.4.dp.toPx()
+                )
+
+                // ---------------------------------------------------------------------
+                // (C) LEICA M SLIM TEARDROP KNURLED FINGER GRIP (Fluted Gripping Head)
+                // ---------------------------------------------------------------------
+                val headPath = Path().apply {
+                    moveTo(cx - 1.9.dp.toPx(), cy - 8.2.dp.toPx())
+                    lineTo(cx - 1.9.dp.toPx(), cy - 11.6.dp.toPx())
+                    lineTo(cx, cy - 12.8.dp.toPx()) // Crisp pointing index pip
+                    lineTo(cx + 1.9.dp.toPx(), cy - 11.6.dp.toPx())
+                    lineTo(cx + 1.9.dp.toPx(), cy - 8.2.dp.toPx())
+                    close()
+                }
+
+                // Solid Titanium Fluted Head Body
+                drawPath(
+                    path = headPath,
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFF7E7C8C),
+                            Color(0xFFB0AEBF),
+                            Color(0xFFD0CEDF),
+                            Color(0xFF6B6978)
+                        ),
+                        start = Offset(cx - 1.9.dp.toPx(), cy - 10.0.dp.toPx()),
+                        end = Offset(cx + 1.9.dp.toPx(), cy - 10.0.dp.toPx())
+                    )
+                )
+
+                // Precision Horizontal Fluted Knurl Grooves (3 milled anti-slip ribs)
+                val knurlOffsets = listOf(8.8.dp.toPx(), 9.8.dp.toPx(), 10.8.dp.toPx())
+                for (offsetY in knurlOffsets) {
+                    val y = cy - offsetY
+                    val halfW = 1.6.dp.toPx()
+                    // Shadow groove
+                    drawLine(
+                        color = Color(0x60000000),
+                        start = Offset(cx - halfW, y),
+                        end = Offset(cx + halfW, y),
+                        strokeWidth = 0.65.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
+                    // Specular ridge line
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.55f * lightOcclusion),
+                        start = Offset(cx - halfW, y - 0.3.dp.toPx()),
+                        end = Offset(cx + halfW, y - 0.3.dp.toPx()),
+                        strokeWidth = 0.35.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
+                }
+
+                // Beveled Outer Edge Contour
+                drawPath(
+                    path = headPath,
+                    brush = Brush.sweepGradient(
+                        0.00f to Color.White.copy(alpha = 0.35f * lightOcclusion),
+                        0.25f to Color(0x20000000),
+                        0.50f to Color.White.copy(alpha = 0.30f * lightOcclusion),
+                        0.75f to Color.White.copy(alpha = 0.70f * lightOcclusion),
+                        1.00f to Color.White.copy(alpha = 0.35f * lightOcclusion),
+                        center = Offset(cx, cy - 10.5.dp.toPx())
+                    ),
+                    style = Stroke(width = 0.5.dp.toPx())
+                )
+
+                // Luminous Infill Index Pip at Lever Tip
+                val pipColor = if (isLandscape) OneShotTheme.FilmSilver else OneShotTheme.AmberGrain
+                drawCircle(
+                    color = pipColor.copy(alpha = 0.98f * lightOcclusion),
+                    radius = 0.75.dp.toPx(),
+                    center = Offset(cx, cy - 11.9.dp.toPx())
+                )
+
+                // ---------------------------------------------------------------------
+                // (D) STEPPED CONCENTRIC PIVOT HUB & VINTAGE SLOTTED BRASS CORE
+                // ---------------------------------------------------------------------
+                val hubRadius = 3.2.dp.toPx()
+
+                // Cold-Rolled Titanium Collar Hub
+                drawCircle(
+                    brush = Brush.linearGradient(
+                        colors = listOf(Color(0xFF565462), Color(0xFF888698), Color(0xFFC0BECF), Color(0xFF42404D)),
+                        start = Offset(cx - hubRadius, cy - hubRadius),
+                        end = Offset(cx + hubRadius, cy + hubRadius)
+                    ),
+                    radius = hubRadius,
+                    center = Offset(cx, cy)
+                )
+
+                // CNC Diamond Chamfer Perimeter Bevel
+                drawCircle(
+                    brush = Brush.sweepGradient(
+                        0.00f to Color.White.copy(alpha = 0.20f * lightOcclusion),
+                        0.25f to Color.Transparent,
+                        0.50f to Color.White.copy(alpha = 0.30f * lightOcclusion),
+                        0.70f to Color.White.copy(alpha = 0.85f * lightOcclusion),
+                        1.00f to Color.White.copy(alpha = 0.20f * lightOcclusion),
+                        center = Offset(cx, cy)
+                    ),
+                    radius = hubRadius,
+                    center = Offset(cx, cy),
+                    style = Stroke(width = 0.6.dp.toPx())
+                )
+
+                // Mechanical Tolerance Moat
+                val moatRadius = 2.2.dp.toPx()
+                drawCircle(
+                    color = Color(0xFF0A0A0E),
+                    radius = moatRadius,
+                    center = Offset(cx, cy)
+                )
+
+                // Vintage Slotted Brass Jewel Core
+                val brassRadius = 1.7.dp.toPx()
+                drawCircle(
+                    brush = Brush.linearGradient(
+                        colors = listOf(Color(0xFFFFD278), Color(0xFFC48E32), Color(0xFF6B4B14)),
+                        start = Offset(cx - brassRadius, cy - brassRadius),
+                        end = Offset(cx + brassRadius, cy + brassRadius)
+                    ),
+                    radius = brassRadius,
+                    center = Offset(cx, cy)
+                )
+
+                // Precision Machine Screw Slot (Horizontal)
+                drawLine(
+                    color = Color(0xFF141318),
+                    start = Offset(cx - 0.9.dp.toPx(), cy),
+                    end = Offset(cx + 0.9.dp.toPx(), cy),
+                    strokeWidth = 0.5.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+                // Screw Slot Bottom Glint
+                drawLine(
+                    color = Color(0x60FFFFFF).copy(alpha = 0.4f * lightOcclusion),
+                    start = Offset(cx - 0.9.dp.toPx(), cy + 0.25.dp.toPx()),
+                    end = Offset(cx + 0.9.dp.toPx(), cy + 0.25.dp.toPx()),
+                    strokeWidth = 0.25.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
         }
     }
 }

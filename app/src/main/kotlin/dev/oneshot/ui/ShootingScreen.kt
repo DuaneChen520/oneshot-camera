@@ -416,6 +416,7 @@ fun ShootingScreen(
                     val isVideo = latestMedia?.isVideo ?: (recordingStatus.lastMediaType == CapturedMediaType.VIDEO)
                     GalleryLauncher.openGallery(context, targetUri, isVideo)
                 },
+                lensFacing = settings.lensFacing,
                 latestMedia = latestMedia
             )
         }
