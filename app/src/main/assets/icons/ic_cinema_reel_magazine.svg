@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Coaxial Twin-Drum Magazine (Supply & Take-up Drums) -->
+  <circle cx="8" cy="9.5" r="5.5" />
+  <circle cx="16" cy="9.5" r="5.5" />
+  <circle cx="8" cy="9.5" r="1.5" fill="currentColor" />
+  <circle cx="16" cy="9.5" r="1.5" fill="currentColor" />
+  <!-- Film Gate Throat Passage to Camera Core -->
+  <path d="M 6.2 14.5 L 7.5 20.5 H 16.5 L 17.8 14.5" />
+  <!-- Film Drive Sprocket Roller in Throat -->
+  <circle cx="12" cy="17.5" r="1.8" />
+  <circle cx="12" cy="17.5" r="0.6" fill="currentColor" />
+</svg>

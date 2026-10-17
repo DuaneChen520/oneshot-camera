@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <!-- Viewfinder Precision Titanium/Alloy Bezel Gradient (Extremely slim 1.2px chamfer) -->
+    <linearGradient id="ovfBezelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#44423e"/>
+      <stop offset="25%" stop-color="#2a2825"/>
+      <stop offset="70%" stop-color="#181716"/>
+      <stop offset="100%" stop-color="#0c0c0b"/>
+    </linearGradient>
+
+    <!-- Optical AR Multi-Coating (Magenta / Cyan / Amber Anti-Reflective Tint) -->
+    <linearGradient id="ovfArCoating" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.30"/>
+      <stop offset="35%" stop-color="#06b6d4" stop-opacity="0.12"/>
+      <stop offset="70%" stop-color="#f59e0b" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.25"/>
+    </linearGradient>
+
+    <!-- Glass Specular Glare (Realistic diagonal light sweep) -->
+    <linearGradient id="ovfGlassGlare" x1="10%" y1="0%" x2="90%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.32"/>
+      <stop offset="22%" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="38%" stop-color="#ffffff" stop-opacity="0.0"/>
+      <stop offset="72%" stop-color="#ffffff" stop-opacity="0.0"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.16"/>
+    </linearGradient>
+
+    <!-- Dusk Sunset Scene Gradients (Fallback Scenic View through OVF) -->
+    <linearGradient id="ovfSkyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0d111e"/>
+      <stop offset="30%" stop-color="#231d36"/>
+      <stop offset="60%" stop-color="#5a2434"/>
+      <stop offset="85%" stop-color="#b85124"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+
+    <!-- Clip Path for the Optical Glass Aperture (Maximized preview area, zero bulky frames) -->
+    <clipPath id="ovfGlassClip">
+      <rect x="4" y="5" width="56" height="54" rx="7"/>
+    </clipPath>
+  </defs>
+
+  <!-- Subtle Drop Shadow under Eyepiece -->
+  <rect x="3" y="6" width="58" height="56" rx="9" fill="#000000" opacity="0.6" filter="blur(1.5px)"/>
+
+  <!-- Slim Precision Machined Bezel: Only 1.5px total edge, 92% screen estate for photo view -->
+  <rect x="2.5" y="3.5" width="59" height="57" rx="8.5" fill="url(#ovfBezelGrad)" stroke="#524e47" stroke-width="0.75"/>
+  <rect x="3.5" y="4.5" width="57" height="55" rx="7.5" fill="#0d0d0c" stroke="#1c1b19" stroke-width="0.5"/>
+
+  <!-- Optical Glass Window (Clips all preview content) -->
+  <g clip-path="url(#ovfGlassClip)">
+    <!-- 1. Background Photographic View (Sunset / Film Negative Scene) -->
+    <rect x="4" y="5" width="56" height="54" fill="url(#ovfSkyGrad)"/>
+    
+    <!-- Distant Sun Glow -->
+    <circle cx="32" cy="34" r="8" fill="#ffea9f" opacity="0.95"/>
+    <circle cx="32" cy="34" r="14" fill="#ffb703" opacity="0.2"/>
+    
+    <!-- Mountain Ridges Silhouette with Depth -->
+    <path d="M 4 43 L 17 35 L 26 39 L 38 32 L 49 40 L 60 36 L 60 60 L 4 60 Z" fill="#18111c" opacity="0.95"/>
+    <path d="M 4 48 L 13 43 L 24 46 L 35 42 L 46 47 L 60 44 L 60 60 L 4 60 Z" fill="#0a080d"/>
+
+    <!-- 2. Optical Anti-Reflective (AR) Coating Sheen -->
+    <rect x="4" y="5" width="56" height="54" fill="url(#ovfArCoating)" style="mix-blend-mode: overlay;"/>
+
+    <!-- 3. Classic Leica / Cinema Optical Framelines (Brightlines 亮框线) -->
+    <!-- Crisp, razor-thin etched frameline corners -->
+    <g stroke="#ffffff" stroke-width="1.1" stroke-linecap="square" opacity="0.88" fill="none">
+      <!-- Top-Left Corner -->
+      <path d="M 9 16 L 9 10 L 15 10"/>
+      <!-- Top-Right Corner -->
+      <path d="M 49 10 L 55 10 L 55 16"/>
+      <!-- Bottom-Left Corner -->
+      <path d="M 9 48 L 9 54 L 15 54"/>
+      <!-- Bottom-Right Corner -->
+      <path d="M 49 54 L 55 54 L 55 48"/>
+    </g>
+
+    <!-- Center Rangefinder Spot / Subtle Micro Crosshair -->
+    <g stroke="#ffffff" stroke-width="0.8" opacity="0.7">
+      <line x1="29.5" y1="32" x2="34.5" y2="32"/>
+      <line x1="32" y1="29.5" x2="32" y2="34.5"/>
+    </g>
+
+    <!-- 4. Real Optical Glass Specular Glare (45-degree angle sheen) -->
+    <rect x="4" y="5" width="56" height="54" fill="url(#ovfGlassGlare)"/>
+
+    <!-- 5. Optical Viewfinder Micro HUD Details -->
+    <!-- Top-Left Optical Label -->
+    <text x="9" y="8.8" fill="#f59e0b" font-family="'SF Mono', 'Courier New', monospace" font-size="2.7" font-weight="bold" letter-spacing="0.4" opacity="0.95">OVF 35</text>
+    <!-- Top-Right Rangefinder Ready LED Indicator (Phosphor Green Dot) -->
+    <circle cx="54.5" cy="8" r="1.1" fill="#10b981" stroke="#059669" stroke-width="0.3"/>
+    <circle cx="54.5" cy="8" r="2.2" fill="#10b981" opacity="0.25"/>
+    <!-- Bottom Right Frame Number Stamp -->
+    <text x="54.5" y="57.5" fill="#ffffff" font-family="'SF Mono', 'Courier New', monospace" font-size="2.7" font-weight="bold" text-anchor="end" opacity="0.85">#12A</text>
+  </g>
+</svg>

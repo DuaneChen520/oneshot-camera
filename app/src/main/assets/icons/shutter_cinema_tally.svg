@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <!-- Heavy Anodized Steel Protective Guard Ring -->
+    <radialGradient id="tallyGuardGrad" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#3c3838"/>
+      <stop offset="50%" stop-color="#241e1e"/>
+      <stop offset="100%" stop-color="#120c0c"/>
+    </radialGradient>
+
+    <!-- Fresnel Ruby Red Convex Lens Gradient (Standby State) -->
+    <radialGradient id="rubyLensGrad" cx="40%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#ff6b6b"/>
+      <stop offset="30%" stop-color="#e03e3e"/>
+      <stop offset="65%" stop-color="#941818"/>
+      <stop offset="90%" stop-color="#4d0808"/>
+      <stop offset="100%" stop-color="#260202"/>
+    </radialGradient>
+
+    <!-- Fresnel Active Firing Tally Glow Gradient -->
+    <radialGradient id="tallyActiveGlow" cx="45%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="25%" stop-color="#ff8585"/>
+      <stop offset="60%" stop-color="#e03e3e"/>
+      <stop offset="100%" stop-color="#800a0a"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Drop Shadow -->
+  <circle cx="32" cy="34" r="28" fill="#000000" opacity="0.7" filter="blur(2px)"/>
+
+  <!-- Outer Heavy Industrial Guard Bezel -->
+  <circle cx="32" cy="32" r="28" fill="url(#tallyGuardGrad)"/>
+  <circle cx="32" cy="32" r="26.5" fill="none" stroke="#e03e3e" stroke-width="0.8" opacity="0.5"/>
+
+  <!-- Four Recessed Hex Machine Screws on Bezel (12, 3, 6, 9 o'clock) -->
+  <circle cx="32" cy="7" r="1.5" fill="#443c3c" stroke="#110a0a" stroke-width="0.5"/>
+  <circle cx="32" cy="57" r="1.5" fill="#443c3c" stroke="#110a0a" stroke-width="0.5"/>
+  <circle cx="7" cy="32" r="1.5" fill="#443c3c" stroke="#110a0a" stroke-width="0.5"/>
+  <circle cx="57" cy="32" r="1.5" fill="#443c3c" stroke="#110a0a" stroke-width="0.5"/>
+
+  <!-- Intermediate Deep Trench (prevents accidental trigger) -->
+  <circle cx="32" cy="32" r="22.5" fill="#0e0404" stroke="#000000" stroke-width="1.2"/>
+
+  <!-- The Darkroom Red Fresnel Lamp Core -->
+  <circle id="tallyCoreElement" cx="32" cy="32" r="18.5" fill="url(#rubyLensGrad)" stroke="#ff8585" stroke-width="0.8"/>
+
+  <!-- Fresnel Lens Circular Prismatic Grooves -->
+  <circle cx="32" cy="32" r="14.5" fill="none" stroke="#ff9999" stroke-width="0.6" opacity="0.45"/>
+  <circle cx="32" cy="32" r="10.5" fill="none" stroke="#ffb3b3" stroke-width="0.6" opacity="0.55"/>
+  <circle cx="32" cy="32" r="6.5" fill="none" stroke="#ffffff" stroke-width="0.7" opacity="0.7"/>
+
+  <!-- Center Specular Highlight Pinhole -->
+  <circle cx="28" cy="27" r="2.8" fill="#ffffff" opacity="0.85" filter="blur(0.5px)"/>
+
+  <!-- Cinema REC Symbol (Center Dot that morphs or indicates recording) -->
+  <circle id="tallyRecIndicator" cx="32" cy="32" r="3.2" fill="#ffffff" opacity="0.9"/>
+</svg>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Rotary Shutter Housing Rim (360 degrees) -->
+  <circle cx="12" cy="12" r="9" />
+  <!-- 180-degree Rotary Blade Sector (Cine Standard 1/48s at 24fps) -->
+  <path d="M 12 12 L 12 3 A 9 9 0 0 1 21 12 Z" fill="currentColor" opacity="0.3" />
+  <!-- Rotary Sector Border Lines -->
+  <line x1="12" y1="12" x2="12" y2="3" />
+  <line x1="12" y1="12" x2="21" y2="12" />
+  <!-- Central Precision Hub & Bearing -->
+  <circle cx="12" cy="12" r="2.8" />
+  <circle cx="12" cy="12" r="1.2" fill="currentColor" />
+  <!-- Shutter Rotation Speed Arc Indicator -->
+  <path d="M 6.5 8 A 7.5 7.5 0 0 0 4.5 12" stroke-dasharray="1.5 1.5" />
+</svg>

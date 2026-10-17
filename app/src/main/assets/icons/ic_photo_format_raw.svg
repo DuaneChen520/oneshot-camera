@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Sensor Bayer Filter Frame -->
+  <rect x="3" y="3" width="18" height="18" rx="2.5" />
+  <!-- Optical Isolation Channel Dividers -->
+  <line x1="12" y1="3" x2="12" y2="21" opacity="0.4" />
+  <line x1="3" y1="12" x2="21" y2="12" opacity="0.4" />
+  <!-- Top-Left Red Pixel (R) -->
+  <circle cx="7.5" cy="7.5" r="2.2" />
+  <!-- Top-Right Green Pixel (Gr) -->
+  <rect x="14.3" y="5.3" width="4.4" height="4.4" rx="1" fill="currentColor" opacity="0.35" />
+  <!-- Bottom-Left Green Pixel (Gb) -->
+  <rect x="5.3" y="14.3" width="4.4" height="4.4" rx="1" fill="currentColor" opacity="0.35" />
+  <!-- Bottom-Right Blue Pixel (B) -->
+  <circle cx="16.5" cy="16.5" r="2.2" fill="currentColor" />
+</svg>

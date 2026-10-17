@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Optical Ground Glass Framing Marks -->
+  <path d="M 4 8 V 4 H 8" />
+  <path d="M 16 4 H 20 V 8" />
+  <path d="M 20 16 V 20 H 16" />
+  <path d="M 8 20 H 4 V 16" />
+  <!-- Center Scope Reticle Cross -->
+  <circle cx="12" cy="12" r="2.5" />
+  <line x1="12" y1="2" x2="12" y2="6" opacity="0.5" />
+  <line x1="12" y1="18" x2="12" y2="22" opacity="0.5" />
+  <line x1="2" y1="12" x2="6" y2="12" opacity="0.5" />
+  <line x1="18" y1="12" x2="22" y2="12" opacity="0.5" />
+</svg>

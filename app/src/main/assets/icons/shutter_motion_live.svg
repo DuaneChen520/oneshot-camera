@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <!-- Outer Bronze Alloy Rim Gradient -->
+    <radialGradient id="bronzeRimGrad" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#ffe2a3"/>
+      <stop offset="30%" stop-color="#f5a623"/>
+      <stop offset="70%" stop-color="#a06008"/>
+      <stop offset="100%" stop-color="#4a2e03"/>
+    </radialGradient>
+
+    <!-- Inner Stepped Chamber Gradient -->
+    <radialGradient id="motionChamberGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1f180d"/>
+      <stop offset="75%" stop-color="#120e07"/>
+      <stop offset="100%" stop-color="#080603"/>
+    </radialGradient>
+
+    <!-- Glowing Live Emulsion Core -->
+    <radialGradient id="liveCoreGlow" cx="40%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#fff8eb"/>
+      <stop offset="25%" stop-color="#ffcc66"/>
+      <stop offset="65%" stop-color="#f5a623"/>
+      <stop offset="100%" stop-color="#c97705"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Deep Drop Shadow -->
+  <circle cx="32" cy="34" r="28" fill="#000000" opacity="0.7" filter="blur(2px)"/>
+
+  <!-- Outer Bronze Alloy Bezel Ring -->
+  <circle cx="32" cy="32" r="28" fill="url(#bronzeRimGrad)"/>
+  <circle cx="32" cy="32" r="26.5" fill="none" stroke="#2a1a03" stroke-width="0.75" opacity="0.6"/>
+
+  <!-- Radial Knurling Teeth / Notches (36 teeth around perimeter) -->
+  <g stroke="#3a2202" stroke-width="0.9" opacity="0.7">
+    <line x1="32" y1="4.5" x2="32" y2="6.8"/>
+    <line x1="32" y1="57.2" x2="32" y2="59.5"/>
+    <line x1="4.5" y1="32" x2="6.8" y2="32"/>
+    <line x1="57.2" y1="32" x2="59.5" y2="32"/>
+    <line x1="12.5" y1="12.5" x2="14.2" y2="14.2"/>
+    <line x1="49.8" y1="49.8" x2="51.5" y2="51.5"/>
+    <line x1="12.5" y1="51.5" x2="14.2" y2="49.8"/>
+    <line x1="49.8" y1="14.2" x2="51.5" y2="12.5"/>
+  </g>
+
+  <!-- Middle Recessed Dark Anodized Chamber -->
+  <circle cx="32" cy="32" r="23" fill="url(#motionChamberGrad)" stroke="#f5a623" stroke-width="1.2" stroke-opacity="0.7"/>
+
+  <!-- Concentric Live Sound/Temporal Motion Wave Rings -->
+  <circle cx="32" cy="32" r="18" fill="none" stroke="#f5a623" stroke-width="0.8" stroke-dasharray="2 2" opacity="0.45"/>
+  <circle cx="32" cy="32" r="13.5" fill="none" stroke="#f5a623" stroke-width="1.0" opacity="0.7"/>
+
+  <!-- Central Live Emulsion Core Button Piston -->
+  <circle cx="32" cy="32" r="8.5" fill="url(#liveCoreGlow)" stroke="#ffe4b0" stroke-width="0.8"/>
+  <circle cx="30" cy="30" r="2.5" fill="#ffffff" opacity="0.75"/>
+
+  <!-- "LIVE" Micro Laser Engraving underneath core -->
+  <text x="32" y="47.5" fill="#f5a623" font-family="'SF Mono', monospace" font-size="5" font-weight="900" letter-spacing="1.2" text-anchor="middle" opacity="0.95">LIVE</text>
+</svg>

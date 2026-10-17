@@ -52,6 +52,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.oneshot.camera.CameraController
+import dev.oneshot.camera.CapturedMediaType
+import dev.oneshot.camera.GalleryLauncher
 import dev.oneshot.camera.HapticManager
 import dev.oneshot.data.AspectRatioMode
 import dev.oneshot.data.DynamicRangeMode
@@ -178,7 +180,6 @@ fun ShootingScreen(
     var isQMenuOpen by remember { mutableStateOf(false) }
     var isAbgmDialogOpen by remember { mutableStateOf(false) }
     var isShutterFlashVisible by remember { mutableStateOf(false) }
-    var isQuickReviewOpen by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
     var lutToDelete by remember { mutableStateOf<CustomLut?>(null) }
@@ -290,7 +291,9 @@ fun ShootingScreen(
                 )
 
                 // Optical Ground Glass Corner Framing Reticles (BRAND.md 4:3 Open Gate Aesthetics)
-                OpticalFramingReticle(modifier = Modifier.fillMaxSize())
+                OpticalFramingReticle(
+                    modifier = Modifier.fillMaxSize()
+                )
 
                 // Mechanical Shutter Flash Reflex Mirror blackout overlay
                 AnimatedVisibility(
@@ -307,12 +310,6 @@ fun ShootingScreen(
 
                 // Tap-to-focus and metering ring indicator
                 FocusIndicator(point = focusPoint)
-
-                // OLED Screen Dimmer during Video Recording
-                ScreenDimmerOverlay(
-                    isRecording = recordingStatus.isRecording,
-                    dimDelayMillis = 3500L
-                )
 
                 // Live Optical Histogram & Waveform Scope (Top-Right of Viewfinder)
                 LiveHistogramScope(
@@ -400,8 +397,14 @@ fun ShootingScreen(
                 status = recordingStatus,
                 onTakeStillPhoto = { cameraController.takeStillPhoto() },
                 onCaptureMotionPhoto = { cameraController.captureMotionPhoto() },
-                onStartRecording = { cameraController.startRecording() },
-                onStopRecording = { cameraController.stopRecording() },
+                onStartRecording = {
+                    hapticManager.tick()
+                    cameraController.startRecording()
+                },
+                onStopRecording = {
+                    hapticManager.tick()
+                    cameraController.stopRecording()
+                },
                 onFlipCamera = {
                     val next = if (settings.lensFacing == LensFacingMode.BACK) LensFacingMode.FRONT else LensFacingMode.BACK
                     parameterStore.setLensFacing(next)
@@ -409,23 +412,9 @@ fun ShootingScreen(
                 },
                 onOpenGallery = {
                     hapticManager.tick()
-                    if (latestMedia != null) {
-                        isQuickReviewOpen = true
-                    } else {
-                        runCatching {
-                            val intent = if (recordingStatus.savedUri != null) {
-                                Intent(Intent.ACTION_VIEW).apply {
-                                    setDataAndType(recordingStatus.savedUri, "*/*")
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                            } else {
-                                Intent(Intent.ACTION_VIEW).apply {
-                                    setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*")
-                                }
-                            }
-                            context.startActivity(intent)
-                        }
-                    }
+                    val targetUri = latestMedia?.uri ?: recordingStatus.savedUri
+                    val isVideo = latestMedia?.isVideo ?: (recordingStatus.lastMediaType == CapturedMediaType.VIDEO)
+                    GalleryLauncher.openGallery(context, targetUri, isVideo)
                 },
                 latestMedia = latestMedia
             )
@@ -459,8 +448,9 @@ fun ShootingScreen(
             onToggleFocusPeaking = { parameterStore.setFocusPeaking(it) },
             onToggleZebraPattern = { parameterStore.setZebraPattern(it) },
             onSetHistogramMode = { parameterStore.setHistogramMode(it) },
+            onSetQMenuSlots = { parameterStore.setQMenuSlots(it) },
             hapticManager = hapticManager,
-            modifier = Modifier.align(Alignment.TopCenter)
+            modifier = Modifier.fillMaxSize()
         )
 
         // 5. Overlays: ABGM 2D White Balance Dialog
@@ -521,42 +511,29 @@ fun ShootingScreen(
                 containerColor = OneShotTheme.ObsidianBlack,
             )
         }
-
-        // 7. Overlays: Quick Review Lightbox (Optical Ground Glass Darkroom Viewer)
-        if (isQuickReviewOpen && latestMedia != null) {
-            QuickReviewLightbox(
-                media = latestMedia,
-                onDismiss = { isQuickReviewOpen = false },
-                onOpenSystemGallery = {
-                    runCatching {
-                        val item = latestMedia ?: return@runCatching
-                        val intent = Intent(Intent.ACTION_VIEW).apply {
-                            setDataAndType(item.uri, if (item.isVideo) "video/*" else "image/*")
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        context.startActivity(intent)
-                    }
-                },
-                hapticManager = hapticManager
-            )
-        }
     }
 }
 
 /**
- * Optical Ground Glass Framing Reticle (BRAND.md 4:3 Open Gate Aesthetics)
- * Draws subtle L-shaped crop brackets at viewfinder corners and micro center mark.
+ * Optical Ground Glass Framing Reticle (BRAND.md 4:3 Open Gate & Cinema Aesthetics)
+ * Features:
+ * - 4 Precision ground glass corner brackets
+ * - Center split-image rangefinder micro-ring & fine crosshair
+ * - Rule of thirds subtle optical tick marks
  */
 @Composable
-private fun OpticalFramingReticle(modifier: Modifier = Modifier) {
+private fun OpticalFramingReticle(
+    modifier: Modifier = Modifier,
+) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-        val margin = 16.dp.toPx()
-        val cornerLen = 14.dp.toPx()
-        val color = OneShotTheme.TitaniumGray.copy(alpha = 0.35f)
-        val stroke = 1.2f
+        val margin = 14.dp.toPx()
+        val cornerLen = 16.dp.toPx()
+        val color = OneShotTheme.FilmSilver.copy(alpha = 0.38f)
+        val stroke = 1.0.dp.toPx()
 
+        // 1. Four Ground Glass Corner Brackets
         // Top-Left corner ⸢
         drawLine(color, Offset(margin, margin), Offset(margin + cornerLen, margin), strokeWidth = stroke)
         drawLine(color, Offset(margin, margin), Offset(margin, margin + cornerLen), strokeWidth = stroke)
@@ -573,12 +550,50 @@ private fun OpticalFramingReticle(modifier: Modifier = Modifier) {
         drawLine(color, Offset(w - margin, h - margin), Offset(w - margin - cornerLen, h - margin), strokeWidth = stroke)
         drawLine(color, Offset(w - margin, h - margin), Offset(w - margin, h - margin - cornerLen), strokeWidth = stroke)
 
-        // Center optical crosshair micro-mark
+        // 2. Rule of Thirds Micro-Ticks (Ultra-fine 0.75px tick marks)
+        val thirdX1 = w / 3f
+        val thirdX2 = w * 2f / 3f
+        val thirdY1 = h / 3f
+        val thirdY2 = h * 2f / 3f
+        val tickSize = 4.dp.toPx()
+        val tickColor = OneShotTheme.TitaniumGray.copy(alpha = 0.22f)
+
+        // 4 intersection micro crosses
+        listOf(
+            Offset(thirdX1, thirdY1),
+            Offset(thirdX2, thirdY1),
+            Offset(thirdX1, thirdY2),
+            Offset(thirdX2, thirdY2)
+        ).forEach { pt ->
+            drawLine(tickColor, Offset(pt.x - tickSize, pt.y), Offset(pt.x + tickSize, pt.y), strokeWidth = 0.75f)
+            drawLine(tickColor, Offset(pt.x, pt.y - tickSize), Offset(pt.x, pt.y + tickSize), strokeWidth = 0.75f)
+        }
+
+        // 3. Center Split-Image Rangefinder Micro-Ring & Crosshair
         val cx = w / 2f
         val cy = h / 2f
-        val ch = 5.dp.toPx()
-        val centerColor = OneShotTheme.TitaniumGray.copy(alpha = 0.22f)
-        drawLine(centerColor, Offset(cx - ch, cy), Offset(cx + ch, cy), strokeWidth = 1.0f)
-        drawLine(centerColor, Offset(cx, cy - ch), Offset(cx, cy + ch), strokeWidth = 1.0f)
+        val ringR = 14.dp.toPx()
+        val centerCrossLen = 6.dp.toPx()
+
+        // Center micro ring (Leica M / Hasselblad ground glass cue)
+        drawCircle(
+            color = OneShotTheme.TitaniumGray.copy(alpha = 0.28f),
+            radius = ringR,
+            center = Offset(cx, cy),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.85f)
+        )
+
+        // Crosshairs outside the ring
+        drawLine(tickColor, Offset(cx - ringR - centerCrossLen, cy), Offset(cx - ringR, cy), strokeWidth = 0.85f)
+        drawLine(tickColor, Offset(cx + ringR, cy), Offset(cx + ringR + centerCrossLen, cy), strokeWidth = 0.85f)
+        drawLine(tickColor, Offset(cx, cy - ringR - centerCrossLen), Offset(cx, cy - ringR), strokeWidth = 0.85f)
+        drawLine(tickColor, Offset(cx, cy + ringR), Offset(cx, cy + ringR + centerCrossLen), strokeWidth = 0.85f)
+
+        // Center micro dot
+        drawCircle(
+            color = OneShotTheme.AmberGrain.copy(alpha = 0.6f),
+            radius = 1.5.dp.toPx(),
+            center = Offset(cx, cy)
+        )
     }
 }

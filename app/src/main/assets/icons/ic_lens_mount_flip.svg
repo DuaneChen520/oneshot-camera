@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Outer Cine Bayonet Dual Rotation Arrows -->
+  <path d="M 4.5 12 A 8 8 0 0 1 18.2 5.8 M 15 3.5 L 18.5 5.8 L 15.5 8.5" />
+  <path d="M 19.5 12 A 8 8 0 0 1 5.8 18.2 M 9 20.5 L 5.5 18.2 L 8.5 15.5" />
+  <!-- PL Lens Mount Flange Ring -->
+  <circle cx="12" cy="12" r="4.5" />
+  <!-- Locking Lugs (120-deg Cine Standard) -->
+  <line x1="11" y1="7.5" x2="13" y2="7.5" />
+  <line x1="8.2" y1="14" x2="9.2" y2="12.4" />
+  <line x1="15.8" y1="14" x2="14.8" y2="12.4" />
+  <!-- Central Optical Core -->
+  <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+</svg>

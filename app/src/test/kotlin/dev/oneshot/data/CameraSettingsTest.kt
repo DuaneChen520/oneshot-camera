@@ -46,6 +46,26 @@ class CameraSettingsTest {
         assertEquals(5, settings.hudPresets.zoomPresets.size)
         assertEquals(5, settings.hudPresets.focusPresets.size)
         assertEquals(5, settings.hudPresets.wbPresets.size)
+        assertEquals(6, settings.qMenuSlots.size)
+        assertEquals(QSlotItem.ASPECT_RATIO, settings.qMenuSlots[0])
+    }
+
+    @Test
+    fun testQMenuConfigDefaultsAndSerialization() {
+        assertEquals(6, QMenuDefaults.DEFAULT_SLOTS.size)
+        assertEquals(6, QMenuDefaults.MAX_SLOTS)
+        assertTrue(QSlotItem.entries.size >= 12)
+
+        val slots = QMenuDefaults.DEFAULT_SLOTS
+        val json = kotlinx.serialization.json.Json.encodeToString(
+            kotlinx.serialization.builtins.ListSerializer(QSlotItem.serializer()),
+            slots
+        )
+        val decoded = kotlinx.serialization.json.Json.decodeFromString(
+            kotlinx.serialization.builtins.ListSerializer(QSlotItem.serializer()),
+            json
+        )
+        assertEquals(slots, decoded)
     }
 
     @Test

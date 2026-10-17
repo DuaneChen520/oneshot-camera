@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- 35mm Metal Canister Body -->
+  <rect x="4" y="6" width="10" height="15" rx="2" />
+  <!-- Top Spool Nub -->
+  <path d="M 7 6 V 3.5 A 0.5 0.5 0 0 1 7.5 3 H 10.5 A 0.5 0.5 0 0 1 11 3.5 V 6" />
+  <!-- Bottom Spool End -->
+  <line x1="7.5" y1="21" x2="10.5" y2="21" />
+  <!-- Film Exit Velvet Lip & Strip Tongue -->
+  <path d="M 14 8.5 H 19.5 C 20.3 8.5 21 9.2 21 10 V 14.5 C 21 15.3 20.3 16 19.5 16 H 14" />
+  <!-- 35mm Sprocket Perforations on Leader -->
+  <rect x="16" y="10.5" width="2.2" height="3.5" rx="0.5" fill="currentColor" />
+  <!-- Metal Rib Grooves -->
+  <line x1="4" y1="10.5" x2="14" y2="10.5" opacity="0.4" />
+  <line x1="4" y1="16.5" x2="14" y2="16.5" opacity="0.4" />
+</svg>

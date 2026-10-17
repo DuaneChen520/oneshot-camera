@@ -119,6 +119,7 @@ data class CameraSettings(
     val zebraPatternEnabled: Boolean = false,
     val histogramMode: HistogramMode = HistogramMode.OFF,
     val hudPresets: ProHudPresets = ProHudPresets(),
+    val qMenuSlots: List<QSlotItem> = QMenuDefaults.DEFAULT_SLOTS,
 )
 
 object VideoBitrateHelper {

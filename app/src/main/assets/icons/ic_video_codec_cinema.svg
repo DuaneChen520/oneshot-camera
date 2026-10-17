@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Cinema Digital Magazine / Tape Cassette Housing -->
+  <rect x="3" y="5" width="18" height="14" rx="2" />
+  <!-- Left Spool Hub -->
+  <circle cx="8" cy="12" r="3" />
+  <circle cx="8" cy="12" r="1.2" fill="currentColor" />
+  <!-- Right Spool Hub -->
+  <circle cx="16" cy="12" r="3" />
+  <circle cx="16" cy="12" r="1.2" fill="currentColor" />
+  <!-- Inter-Spool Film Tape Bridge -->
+  <line x1="8" y1="9" x2="16" y2="9" />
+  <!-- Precision Read/Write Gate Window -->
+  <path d="M 9.5 16 H 14.5 L 13.5 14 H 10.5 Z" opacity="0.7" />
+  <!-- Data Tape Perforation Marks -->
+  <line x1="4.5" y1="7" x2="5.5" y2="7" />
+  <line x1="18.5" y1="7" x2="19.5" y2="7" />
+</svg>

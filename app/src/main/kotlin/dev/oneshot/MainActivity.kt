@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import dev.oneshot.camera.HardwareKeyMapper
 import dev.oneshot.ui.ShootingScreen
 
@@ -12,6 +13,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var hardwareKeyMapper: HardwareKeyMapper
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         val app = application as OneshotApp
         hardwareKeyMapper = HardwareKeyMapper(

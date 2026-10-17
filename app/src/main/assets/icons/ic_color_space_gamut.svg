@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- CIE 1931 Spectral Locus Horseshoe Curve -->
+  <path d="M 4 20 L 4 10.5 C 4 6.5 7.5 3.5 12 3.5 C 16.5 3.5 20 6.5 20 12 C 20 16 18.5 18 16 20 Z" />
+  <!-- Display P3 / Rec.2020 Cinema Triangle -->
+  <path d="M 12 6.8 L 18 17.8 H 6 Z" opacity="0.75" />
+  <!-- D65 Illuminant Reference White Point -->
+  <circle cx="12" cy="14" r="1.2" fill="currentColor" />
+</svg>

@@ -8,6 +8,36 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_GALLERY" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="image/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="video/*" />
+        </intent>
+        <intent>
+            <action android:name="com.android.camera.action.REVIEW" />
+            <data android:mimeType="image/*" />
+        </intent>
+        <package android:name="com.miui.gallery" />
+        <package android:name="com.google.android.apps.photos" />
+        <package android:name="com.sec.android.gallery3d" />
+        <package android:name="com.huawei.photos" />
+        <package android:name="com.hihonor.photos" />
+        <package android:name="com.coloros.gallery3d" />
+        <package android:name="com.oneplus.gallery" />
+        <package android:name="com.vivo.gallery" />
+    </queries>
 
     <uses-feature android:name="android.hardware.camera.any" android:required="true" />
     <uses-feature android:name="android.hardware.camera.flash" android:required="false" />

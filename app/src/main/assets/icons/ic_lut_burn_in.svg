@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Lower Film Substrate Bed -->
+  <path d="M 3.5 18.5 H 20.5 A 1 1 0 0 0 21.5 17.5 V 14.5 A 1 1 0 0 0 20.5 13.5 H 3.5 A 1 1 0 0 0 2.5 14.5 V 17.5 A 1 1 0 0 0 3.5 18.5 Z" />
+  <rect x="5.5" y="15" width="2" height="2" rx="0.4" fill="currentColor" />
+  <rect x="16.5" y="15" width="2" height="2" rx="0.4" fill="currentColor" />
+  <!-- Upper Laser / Chemical Burn-In Emitter Nozzle -->
+  <path d="M 9.5 3 H 14.5 L 13 7 H 11 Z" />
+  <!-- Focused Solidifying Energy Beam -->
+  <line x1="11" y1="7" x2="8.5" y2="13.5" stroke-dasharray="1.5 1" opacity="0.5" />
+  <line x1="13" y1="7" x2="15.5" y2="13.5" stroke-dasharray="1.5 1" opacity="0.5" />
+  <line x1="12" y1="7" x2="12" y2="13.5" />
+  <!-- Pure Film Chemistry Fusion Spark -->
+  <path d="M 12 11.5 L 12.8 12.8 L 14.2 13.5 L 12.8 14.2 L 12 15.5 L 11.2 14.2 L 9.8 13.5 L 11.2 12.8 Z" fill="currentColor" />
+</svg>

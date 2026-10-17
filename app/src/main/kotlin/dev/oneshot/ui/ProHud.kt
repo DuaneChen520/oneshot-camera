@@ -267,10 +267,17 @@ fun ProHud(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .background(OneShotTheme.ChassisDark)
-                .border(width = 0.75.dp, color = OneShotTheme.TitaniumBorder, shape = RoundedCornerShape(10.dp))
-                .padding(horizontal = 4.dp, vertical = 5.dp),
+                .clip(RoundedCornerShape(11.dp))
+                .background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(
+                            OneShotTheme.ChassisMilled,
+                            OneShotTheme.ChassisDark
+                        )
+                    )
+                )
+                .border(width = 0.85.dp, color = OneShotTheme.ChassisBorder, shape = RoundedCornerShape(11.dp))
+                .padding(horizontal = 4.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {

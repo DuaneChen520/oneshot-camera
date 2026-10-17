@@ -77,6 +77,15 @@ class ParameterStore(private val context: Context) {
                     ProHudPresets()
                 }
 
+                val qMenuSlotsRaw = prefs[KEY_Q_MENU_SLOTS_JSON]
+                val qMenuSlots = if (qMenuSlotsRaw != null) {
+                    runCatching {
+                        jsonFormat.decodeFromString<List<QSlotItem>>(qMenuSlotsRaw)
+                    }.getOrDefault(QMenuDefaults.DEFAULT_SLOTS)
+                } else {
+                    QMenuDefaults.DEFAULT_SLOTS
+                }
+
                 _settings.value = CameraSettings(
                     aspectMode = runCatching { AspectRatioMode.valueOf(aspectName) }.getOrDefault(AspectRatioMode.RATIO_4_3),
                     dynamicRange = runCatching { DynamicRangeMode.valueOf(drName) }.getOrDefault(DynamicRangeMode.HLG10),
@@ -112,6 +121,7 @@ class ParameterStore(private val context: Context) {
                     zebraPatternEnabled = zebra,
                     histogramMode = runCatching { HistogramMode.valueOf(histModeName) }.getOrDefault(HistogramMode.OFF),
                     hudPresets = hudPresets,
+                    qMenuSlots = qMenuSlots,
                 )
             }
         }
@@ -311,6 +321,14 @@ class ParameterStore(private val context: Context) {
         }
     }
 
+    fun setQMenuSlots(slots: List<QSlotItem>) {
+        scope.launch {
+            context.dataStore.edit { prefs ->
+                prefs[KEY_Q_MENU_SLOTS_JSON] = jsonFormat.encodeToString(slots.take(QMenuDefaults.MAX_SLOTS))
+            }
+        }
+    }
+
     private companion object {
         val KEY_ASPECT = stringPreferencesKey("aspect_mode")
         val KEY_DR = stringPreferencesKey("dynamic_range")
@@ -346,5 +364,6 @@ class ParameterStore(private val context: Context) {
         val KEY_ZEBRA = booleanPreferencesKey("zebra_pattern")
         val KEY_HISTOGRAM_MODE = stringPreferencesKey("histogram_mode")
         val KEY_HUD_PRESETS_JSON = stringPreferencesKey("hud_presets_json")
+        val KEY_Q_MENU_SLOTS_JSON = stringPreferencesKey("q_menu_slots_json")
     }
 }

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Milled Aircraft-Grade Alloy Q-Panel Chassis -->
+  <rect x="3" y="3" width="18" height="18" rx="3.5" />
+  <!-- 2x3 Precision Tactical Matrix Push-Buttons -->
+  <rect x="5.5" y="5.5" width="5" height="4" rx="1" />
+  <rect x="13.5" y="5.5" width="5" height="4" rx="1" />
+  <rect x="5.5" y="11" width="5" height="4" rx="1" />
+  <!-- Active Illuminated Key Slot (Amber Grain Glow) -->
+  <rect x="13.5" y="11" width="5" height="4" rx="1" fill="currentColor" opacity="0.75" />
+  <rect x="5.5" y="16.5" width="5" height="2.2" rx="0.7" opacity="0.5" />
+  <rect x="13.5" y="16.5" width="5" height="2.2" rx="0.7" opacity="0.5" />
+</svg>
