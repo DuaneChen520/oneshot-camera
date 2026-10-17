@@ -18,6 +18,7 @@ import android.util.Range
 import android.util.Size
 import dev.oneshot.data.PhotoFormat
 import dev.oneshot.data.VideoCodec
+import dev.oneshot.data.VideoStabilizationMode
 import kotlinx.coroutines.asExecutor
 import androidx.camera.camera2.interop.Camera2CameraControl
 import androidx.camera.camera2.interop.Camera2Interop
@@ -28,6 +29,9 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.DynamicRange
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageCapture
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.MeteringPointFactory
 import androidx.camera.core.Preview
@@ -133,7 +137,9 @@ class CameraController(
             parameterStore.settings.collectLatest { settings ->
                 if (activeLifecycleOwner != null && activeSurfaceProvider != null) {
                     val prev = lastBoundSettings
-                    val needsRebind = prev == null ||
+                    // Only react to changes AFTER initial binding has completed (prev != null).
+                    // Initial binding is exclusively initiated by bindCamera().
+                    val needsRebind = prev != null && (
                         prev.lensFacing != settings.lensFacing ||
                         prev.aspectMode != settings.aspectMode ||
                         prev.dynamicRange != settings.dynamicRange ||
@@ -142,11 +148,13 @@ class CameraController(
                         prev.videoCodec != settings.videoCodec ||
                         prev.dcgHdrEnabled != settings.dcgHdrEnabled ||
                         prev.ultraHdrEnabled != settings.ultraHdrEnabled ||
+                        prev.videoStabilization != settings.videoStabilization ||
                         prev.lutBurnIn != settings.lutBurnIn
+                    )
 
                     if (needsRebind) {
                         rebindCamera(activeLifecycleOwner!!, activeSurfaceProvider!!, settings)
-                    } else {
+                    } else if (prev != null) {
                         applyInFlightParameters(settings)
                     }
                 }
@@ -194,15 +202,43 @@ class CameraController(
             LensFacingMode.BACK -> CameraSelector.DEFAULT_BACK_CAMERA
         }
 
-        // 1. Build Preview
-        val preview = Preview.Builder().build().apply {
-            setSurfaceProvider(surfaceProvider)
+        val dynamicRange = when (effectiveSettings.dynamicRange) {
+            DynamicRangeMode.HLG10 -> DynamicRange.HLG_10_BIT
+            DynamicRangeMode.SDR -> DynamicRange.SDR
         }
 
-        // 2. Build ImageCapture (M2 High-spec Stills)
+        // 1. Build Preview with matching AspectRatioStrategy and DynamicRange
+        val previewResolutionSelector = ResolutionSelector.Builder()
+            .setAspectRatioStrategy(
+                AspectRatioStrategy(
+                    effectiveSettings.aspectMode.cameraXRatio,
+                    AspectRatioStrategy.FALLBACK_RULE_AUTO
+                )
+            )
+            .build()
+
+        val preview = Preview.Builder()
+            .setResolutionSelector(previewResolutionSelector)
+            .setDynamicRange(dynamicRange)
+            .build().apply {
+                setSurfaceProvider(surfaceProvider)
+            }
+
+        // 2. Build ImageCapture (M2 High-spec Stills with Sensor Max Resolution & MFNR)
+        val resolutionSelector = ResolutionSelector.Builder()
+            .setAllowedResolutionMode(ResolutionSelector.PREFER_HIGHER_RESOLUTION_OVER_CAPTURE_RATE)
+            .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
+            .setAspectRatioStrategy(
+                AspectRatioStrategy(
+                    effectiveSettings.aspectMode.cameraXRatio,
+                    AspectRatioStrategy.FALLBACK_RULE_AUTO
+                )
+            )
+            .build()
+
         val imageCaptureBuilder = ImageCapture.Builder()
-            .setTargetAspectRatio(effectiveSettings.aspectMode.cameraXRatio)
-            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .setResolutionSelector(resolutionSelector)
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && effectiveSettings.ultraHdrEnabled) {
             runCatching {
@@ -239,11 +275,6 @@ class CameraController(
             )
         }
 
-        val dynamicRange = when (effectiveSettings.dynamicRange) {
-            DynamicRangeMode.HLG10 -> DynamicRange.HLG_10_BIT
-            DynamicRangeMode.SDR -> DynamicRange.SDR
-        }
-
         val videoCaptureBuilder = VideoCapture.Builder(recorderBuilder.build())
             .setDynamicRange(dynamicRange)
 
@@ -253,23 +284,26 @@ class CameraController(
             }
         }
 
+        // Configure VideoCapture stabilization via Camera2Interop
+        Camera2Interop.Extender(videoCaptureBuilder).apply {
+            when (effectiveSettings.videoStabilization) {
+                VideoStabilizationMode.STANDARD -> {
+                    setCaptureRequestOption(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF)
+                    setCaptureRequestOption(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE, CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON)
+                }
+                VideoStabilizationMode.ENHANCED -> {
+                    setCaptureRequestOption(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON)
+                    setCaptureRequestOption(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE, CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON)
+                }
+                VideoStabilizationMode.OFF -> {
+                    setCaptureRequestOption(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF)
+                    setCaptureRequestOption(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE, CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_OFF)
+                }
+            }
+        }
+
         val videoCapture = videoCaptureBuilder.build()
         activeVideoCapture = videoCapture
-
-        // 4. Session Parameters (DCG HDR vendor tag 0x8003)
-        val useCases: MutableList<UseCase> = mutableListOf(preview, imageCapture, videoCapture)
-        val sessionConfigBuilder = SessionConfig.Builder(useCases)
-
-        if (effectiveSettings.dcgHdrEnabled && effectiveSettings.lensFacing == LensFacingMode.BACK) {
-            sessionConfigBuilder.setInterop(Camera2Interop.forSessionConfig { interop ->
-                runCatching {
-                    interop.setSessionParameter(
-                        CaptureRequest.Key("org.codeaurora.qcamera3.sessionParameters.EnableHDRDCGMode", Int::class.java),
-                        1
-                    )
-                }
-            })
-        }
 
         // Bind use cases to lifecycle with graceful fallback
         val hasEffect = effectiveSettings.lutEnabled ||
@@ -497,6 +531,54 @@ class CameraController(
             )
         }
 
+        // 7. Video Stabilization Mode (OIS & EIS)
+        when (settings.videoStabilization) {
+            VideoStabilizationMode.STANDARD -> {
+                optionsBuilder.setCaptureRequestOption(
+                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF
+                )
+                optionsBuilder.setCaptureRequestOption(
+                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
+                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON
+                )
+            }
+            VideoStabilizationMode.ENHANCED -> {
+                optionsBuilder.setCaptureRequestOption(
+                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON
+                )
+                optionsBuilder.setCaptureRequestOption(
+                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
+                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON
+                )
+            }
+            VideoStabilizationMode.OFF -> {
+                optionsBuilder.setCaptureRequestOption(
+                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF
+                )
+                optionsBuilder.setCaptureRequestOption(
+                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
+                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_OFF
+                )
+            }
+        }
+
+        // 8. Hardware Image Quality & Clarity Tuning
+        optionsBuilder.setCaptureRequestOption(
+            CaptureRequest.EDGE_MODE,
+            CaptureRequest.EDGE_MODE_HIGH_QUALITY
+        )
+        optionsBuilder.setCaptureRequestOption(
+            CaptureRequest.NOISE_REDUCTION_MODE,
+            CaptureRequest.NOISE_REDUCTION_MODE_HIGH_QUALITY
+        )
+        optionsBuilder.setCaptureRequestOption(
+            CaptureRequest.COLOR_CORRECTION_ABERRATION_MODE,
+            CaptureRequest.COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY
+        )
+
         Camera2CameraControl.from(control).setCaptureRequestOptions(optionsBuilder.build())
         glProcessor?.updateSettings(settings)
     }
@@ -505,20 +587,23 @@ class CameraController(
     // M2: STILL PHOTOGRAPHY PIPELINE
     // =========================================================================
 
+    private val inFlightStillCaptures = java.util.concurrent.atomic.AtomicInteger(0)
+
     fun takeStillPhoto() {
         val imageCapture = activeImageCapture ?: return
-        if (_recordingStatus.value.isStillCapturing || _recordingStatus.value.isMotionCapturing) return
+        if (inFlightStillCaptures.get() >= 5) return
 
         val currentSettings = parameterStore.settings.value
         val isHeif = currentSettings.photoFormat == PhotoFormat.HEIF
 
         hapticManager.shutterClick()
+        inFlightStillCaptures.incrementAndGet()
         _recordingStatus.value = _recordingStatus.value.copy(
             isStillCapturing = true,
             shutterAnimationTick = SystemClock.uptimeMillis()
         )
 
-        val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val stamp = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
 
         if (isHeif) {
             val displayName = "IMG_${stamp}.heic"
@@ -568,9 +653,10 @@ class CameraController(
                             tempHeifFile.delete()
 
                             mainExecutor.execute {
+                                val remaining = inFlightStillCaptures.decrementAndGet()
                                 galleryThumbnailManager.updateWithCapturedUri(uri, false, displayName)
                                 _recordingStatus.value = _recordingStatus.value.copy(
-                                    isStillCapturing = false,
+                                    isStillCapturing = remaining > 0,
                                     savedUri = uri,
                                     lastMediaType = CapturedMediaType.PHOTO,
                                     userNotice = "HEIF 照片已保存至相册 (DCIM/OneShot)",
@@ -581,8 +667,9 @@ class CameraController(
                             tempStillFile.delete()
                             tempHeifFile.delete()
                             mainExecutor.execute {
+                                val remaining = inFlightStillCaptures.decrementAndGet()
                                 _recordingStatus.value = _recordingStatus.value.copy(
-                                    isStillCapturing = false,
+                                    isStillCapturing = remaining > 0,
                                     lastError = "HEIF 编码失败: ${ex.message}",
                                 )
                             }
@@ -593,8 +680,9 @@ class CameraController(
                         tempStillFile.delete()
                         tempHeifFile.delete()
                         mainExecutor.execute {
+                            val remaining = inFlightStillCaptures.decrementAndGet()
                             _recordingStatus.value = _recordingStatus.value.copy(
-                                isStillCapturing = false,
+                                isStillCapturing = remaining > 0,
                                 lastError = "拍照失败: ${exception.message}",
                             )
                         }
@@ -622,21 +710,24 @@ class CameraController(
                 mainExecutor,
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                        val remaining = inFlightStillCaptures.decrementAndGet()
                         outputFileResults.savedUri?.let { uri ->
                             galleryThumbnailManager.updateWithCapturedUri(uri, false, displayName)
                         }
+                        val notice = if (_recordingStatus.value.isRecording) "录制中拍照已保存至相册 (DCIM/OneShot)" else "照片已保存至相册 (DCIM/OneShot)"
                         _recordingStatus.value = _recordingStatus.value.copy(
-                            isStillCapturing = false,
+                            isStillCapturing = remaining > 0,
                             savedUri = outputFileResults.savedUri,
                             lastMediaType = CapturedMediaType.PHOTO,
-                            userNotice = "照片已保存至相册 (DCIM/OneShot)",
+                            userNotice = notice,
                             lastError = null,
                         )
                     }
 
                     override fun onError(exception: ImageCaptureException) {
+                        val remaining = inFlightStillCaptures.decrementAndGet()
                         _recordingStatus.value = _recordingStatus.value.copy(
-                            isStillCapturing = false,
+                            isStillCapturing = remaining > 0,
                             lastError = "拍照失败: ${exception.message}",
                         )
                     }
@@ -652,7 +743,16 @@ class CameraController(
     fun captureMotionPhoto() {
         val imageCapture = activeImageCapture ?: return
         val videoCapture = activeVideoCapture ?: return
-        if (_recordingStatus.value.isStillCapturing || _recordingStatus.value.isMotionCapturing || _recordingStatus.value.isRecording) return
+        if (_recordingStatus.value.isStillCapturing || _recordingStatus.value.isMotionCapturing) return
+
+        // If recording is already active, take a still snapshot seamlessly instead of blocking
+        if (_recordingStatus.value.isRecording) {
+            takeStillPhoto()
+            _recordingStatus.value = _recordingStatus.value.copy(
+                userNotice = "录制中动态截帧抓拍已保存至相册 (DCIM/OneShot)"
+            )
+            return
+        }
 
         hapticManager.shutterClick()
         _recordingStatus.value = _recordingStatus.value.copy(

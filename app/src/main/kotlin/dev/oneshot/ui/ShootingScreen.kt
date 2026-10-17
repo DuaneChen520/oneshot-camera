@@ -279,7 +279,7 @@ fun ShootingScreen(
                     modifier = Modifier.fillMaxSize(),
                     factory = { ctx ->
                         PreviewView(ctx).apply {
-                            implementationMode = PreviewView.ImplementationMode.PERFORMANCE
+                            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                             scaleType = PreviewView.ScaleType.FILL_CENTER
                             previewViewRef = this
                             cameraController.bindCamera(lifecycleOwner, surfaceProvider)
@@ -327,6 +327,13 @@ fun ShootingScreen(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(top = 10.dp, end = 12.dp)
+                )
+
+                // OLED Screen Dimmer Overlay (Thermal/Power Saving during long recordings)
+                ScreenDimmerOverlay(
+                    isRecording = recordingStatus.isRecording,
+                    enabled = settings.screenDimmerEnabled,
+                    dimDelayMillis = 3500L
                 )
             }
         }
@@ -433,6 +440,8 @@ fun ShootingScreen(
             onSetVideoBitrate = { parameterStore.setVideoBitrateMbps(it) },
             onSetVideoCodec = { parameterStore.setVideoCodec(it) },
             onSetPhotoFormat = { parameterStore.setPhotoFormat(it) },
+            onSetVideoStabilization = { parameterStore.setVideoStabilization(it) },
+            onToggleScreenDimmer = { parameterStore.setScreenDimmerEnabled(it) },
             onSetDynamicRange = { parameterStore.setDynamicRange(it) },
             onToggleDcg = { parameterStore.setDcgHdr(it) },
             onToggleUltraHdr = { parameterStore.setUltraHdr(it) },

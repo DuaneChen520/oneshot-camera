@@ -1,5 +1,7 @@
 package dev.oneshot
 
+import android.content.pm.ActivityInfo
+import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -14,6 +16,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            window.colorMode = ActivityInfo.COLOR_MODE_HDR
+        }
         super.onCreate(savedInstanceState)
         val app = application as OneshotApp
         hardwareKeyMapper = HardwareKeyMapper(

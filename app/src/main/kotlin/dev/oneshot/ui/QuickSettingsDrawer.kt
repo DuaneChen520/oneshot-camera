@@ -68,6 +68,7 @@ import dev.oneshot.data.QSlotItem
 import dev.oneshot.data.QualityPreset
 import dev.oneshot.data.VideoBitrateHelper
 import dev.oneshot.data.VideoCodec
+import dev.oneshot.data.VideoStabilizationMode
 import dev.oneshot.data.VolumeKeyAction
 import dev.oneshot.ui.theme.CinemaIcon
 import dev.oneshot.ui.theme.OneShotTheme
@@ -92,6 +93,8 @@ fun QuickSettingsDrawer(
     onSetVideoBitrate: (Int) -> Unit = {},
     onSetVideoCodec: (VideoCodec) -> Unit = {},
     onSetPhotoFormat: (PhotoFormat) -> Unit = {},
+    onSetVideoStabilization: (VideoStabilizationMode) -> Unit = {},
+    onToggleScreenDimmer: (Boolean) -> Unit = {},
     onSetDynamicRange: (DynamicRangeMode) -> Unit,
     onToggleDcg: (Boolean) -> Unit,
     onToggleUltraHdr: (Boolean) -> Unit,
@@ -340,6 +343,7 @@ fun QuickSettingsDrawer(
                                     onSetVideoCodec = onSetVideoCodec,
                                     onSetPhotoFormat = onSetPhotoFormat,
                                     onSetVideoBitrate = onSetVideoBitrate,
+                                    onSetVideoStabilization = onSetVideoStabilization,
                                     hapticManager = hapticManager
                                 )
                             }
@@ -353,6 +357,7 @@ fun QuickSettingsDrawer(
                                     onSetMotionDuration = onSetMotionDuration,
                                     onSetVolumeUp = onSetVolumeUp,
                                     onSetVolumeDown = onSetVolumeDown,
+                                    onToggleScreenDimmer = onToggleScreenDimmer,
                                     hapticManager = hapticManager
                                 )
                             }
@@ -910,6 +915,7 @@ private fun FormatOpticsView(
     onSetVideoCodec: (VideoCodec) -> Unit,
     onSetPhotoFormat: (PhotoFormat) -> Unit,
     onSetVideoBitrate: (Int) -> Unit,
+    onSetVideoStabilization: (VideoStabilizationMode) -> Unit,
     hapticManager: HapticManager,
 ) {
     Column(
@@ -934,7 +940,27 @@ private fun FormatOpticsView(
             }
         }
 
-        // 2. Video Resolution Ladder
+        // 2. Video Stabilization Mode
+        DrawerSectionTitle("视频防抖模式 (Stabilization)")
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            VideoStabilizationMode.entries.forEach { mode ->
+                DrawerTile(
+                    title = mode.shortLabel + " · " + when (mode) {
+                        VideoStabilizationMode.STANDARD -> "纯光学"
+                        VideoStabilizationMode.ENHANCED -> "光学+电子"
+                        VideoStabilizationMode.OFF -> "关闭"
+                    },
+                    isSelected = settings.videoStabilization == mode,
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        hapticManager.tick()
+                        onSetVideoStabilization(mode)
+                    }
+                )
+            }
+        }
+
+        // 3. Video Resolution Ladder
         DrawerSectionTitle("视频画质天梯 (Resolution)")
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -952,7 +978,7 @@ private fun FormatOpticsView(
             }
         }
 
-        // 3. Frame Rate Ladder
+        // 4. Frame Rate Ladder
         DrawerSectionTitle("电影帧率 (Frame Rate)")
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -1027,6 +1053,7 @@ private fun AssistHardwareView(
     onSetMotionDuration: (MotionDurationPreset) -> Unit,
     onSetVolumeUp: (VolumeKeyAction) -> Unit,
     onSetVolumeDown: (VolumeKeyAction) -> Unit,
+    onToggleScreenDimmer: (Boolean) -> Unit,
     hapticManager: HapticManager,
 ) {
     Column(
@@ -1056,6 +1083,17 @@ private fun AssistHardwareView(
             onToggle = {
                 hapticManager.tick()
                 onToggleZebraPattern(!settings.zebraPatternEnabled)
+            }
+        )
+
+        // Screen Dimmer Power Saving Row
+        AssistMicroToggleRow(
+            title = "💡 录制防发热暗屏 (OLED 省电保护)",
+            subtitle = "录制 3.5s 无触控自动微暗降温，触屏即全亮",
+            isEnabled = settings.screenDimmerEnabled,
+            onToggle = {
+                hapticManager.tick()
+                onToggleScreenDimmer(!settings.screenDimmerEnabled)
             }
         )
 

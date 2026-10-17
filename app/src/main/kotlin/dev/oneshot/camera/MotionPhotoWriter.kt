@@ -28,13 +28,14 @@ object MotionPhotoWriter {
         jpegFile: File,
         mp4File: File,
         displayName: String,
+        presentationTimestampUs: Long = 0L,
     ): Uri? {
         val videoLength = mp4File.length()
         if (!jpegFile.exists() || !mp4File.exists() || videoLength <= 0) {
             return null
         }
 
-        val xmpString = buildXmpString(videoLength)
+        val xmpString = buildXmpString(videoLength, presentationTimestampUs)
         val xmpBytes = xmpString.toByteArray(StandardCharsets.UTF_8)
         val xmpHeaderBytes = XMP_HEADER.toByteArray(StandardCharsets.UTF_8)
 
@@ -74,7 +75,32 @@ object MotionPhotoWriter {
                     // 1. Write JPEG SOI (0xFF, 0xD8)
                     output.write(header)
 
-                    // 2. Write injected XMP APP1 Marker (0xFF, 0xE1, length MSB, length LSB)
+                    // 2. If existing JPEG starts with an APP segment (e.g. Exif APP1 0xFF 0xE1 or JFIF APP0 0xFF 0xE0),
+                    // write it first so that Exif remains strictly at offset 2 per TIFF/Exif spec.
+                    val m0 = jpegIn.read()
+                    val m1 = jpegIn.read()
+                    if (m0 == 0xFF && (m1 == 0xE1 || m1 == 0xE0)) {
+                        val lenMsb = jpegIn.read()
+                        val lenLsb = jpegIn.read()
+                        val segLen = ((lenMsb and 0xFF) shl 8) or (lenLsb and 0xFF)
+                        val segPayload = ByteArray(segLen - 2)
+                        var bytesRead = 0
+                        while (bytesRead < segPayload.size) {
+                            val r = jpegIn.read(segPayload, bytesRead, segPayload.size - bytesRead)
+                            if (r == -1) break
+                            bytesRead += r
+                        }
+                        output.write(0xFF)
+                        output.write(m1)
+                        output.write(lenMsb)
+                        output.write(lenLsb)
+                        output.write(segPayload, 0, bytesRead)
+                    } else if (m0 != -1 && m1 != -1) {
+                        output.write(m0)
+                        output.write(m1)
+                    }
+
+                    // 3. Write injected XMP APP1 Marker (0xFF, 0xE1, length MSB, length LSB)
                     output.write(0xFF)
                     output.write(0xE1)
                     output.write((markerLength shr 8) and 0xFF)
@@ -82,11 +108,11 @@ object MotionPhotoWriter {
                     output.write(xmpHeaderBytes)
                     output.write(xmpBytes)
 
-                    // 3. Write remaining JPEG bytes
+                    // 4. Write remaining JPEG bytes
                     jpegIn.copyTo(output)
                 }
 
-                // 4. Append entire MP4 video stream to the tail of the JPEG
+                // 5. Append entire MP4 video stream to the tail of the JPEG
                 FileInputStream(mp4File).use { mp4In ->
                     mp4In.copyTo(output)
                 }
@@ -108,7 +134,7 @@ object MotionPhotoWriter {
         }
     }
 
-    internal fun buildXmpString(videoLength: Long): String {
+    internal fun buildXmpString(videoLength: Long, presentationTimestampUs: Long = 0L): String {
         return """
             <x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 5.1.0-jc003">
               <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
@@ -121,7 +147,7 @@ object MotionPhotoWriter {
                   GCamera:MicroVideo="1"
                   GCamera:MicroVideoVersion="1"
                   GCamera:MicroVideoOffset="$videoLength"
-                  GCamera:MicroVideoPresentationTimestampUs="0">
+                  GCamera:MicroVideoPresentationTimestampUs="$presentationTimestampUs">
                   <Container:Directory>
                     <rdf:Seq>
                       <rdf:li rdf:parseType="Resource">

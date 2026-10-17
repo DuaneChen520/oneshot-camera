@@ -168,21 +168,21 @@ fun ShutterCluster(
             // Left Shutter: Motion Photo (Live Emulsion Shutter with concentric rings)
             MotionPhotoShutterButton(
                 isCapturing = status.isMotionCapturing,
-                enabled = !status.isRecording && !status.isStillCapturing,
+                enabled = !status.isMotionCapturing,
                 onClick = onCaptureMotionPhoto
             )
 
             // Center Shutter: Decisive Frame Still Photography (Precision Mechanical Shutter Assembly)
             MechanicalStillShutterButton(
                 isCapturing = status.isStillCapturing,
-                enabled = !status.isRecording && !status.isMotionCapturing,
+                enabled = !status.isMotionCapturing,
                 onClick = onTakeStillPhoto
             )
 
             // Right Shutter: Video Recording (Darkroom Red Tally Shutter)
             CinemaVideoShutterButton(
                 isRecording = status.isRecording,
-                enabled = !status.isStillCapturing && !status.isMotionCapturing,
+                enabled = !status.isMotionCapturing,
                 onClick = {
                     if (status.isRecording) onStopRecording() else onStartRecording()
                 }
@@ -285,7 +285,7 @@ private fun GallerySquircleOpticalHatch(
 
     Box(
         modifier = modifier
-            .size(50.dp)
+            .size(36.dp)
             .alpha(if (enabled) 1.0f else 0.35f)
             .clickable(
                 enabled = enabled,
@@ -295,61 +295,11 @@ private fun GallerySquircleOpticalHatch(
             ),
         contentAlignment = Alignment.Center
     ) {
-        // 1. FIXED RIGID OUTER CHASSIS RECESS (Zero hard wireframe stroke lines)
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-            val cx = w / 2f
-            val cy = h / 2f
-            val outerA = cx - 1.dp.toPx()
-            val outerB = cy - 1.dp.toPx()
-
-            val outerPath = buildSquirclePath(cx, cy, outerA, outerB, n = 3.0f)
-
-            // Outer Housing Base (Anodized Satin Gunmetal Titanium - Distinct yet restrained)
-            drawPath(
-                path = outerPath,
-                brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF3D3A4A), Color(0xFF282633), Color(0xFF17161F)),
-                    center = Offset(cx - 2.dp.toPx(), cy - 2.dp.toPx()),
-                    radius = outerA
-                )
-            )
-
-            // Outer Bezel CNC 45° Diamond Chamfer Rim (Top-left glint, bottom-right shade)
-            drawPath(
-                path = outerPath,
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.35f),
-                        Color.White.copy(alpha = 0.12f),
-                        Color(0x30000000),
-                        Color(0x60000000)
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(w, h)
-                ),
-                style = Stroke(width = 0.75.dp.toPx())
-            )
-
-            // Deep mechanical borehole well (Seamless dark shadow moat)
-            val boreA = outerA - 2.4.dp.toPx()
-            val boreB = outerB - 2.4.dp.toPx()
-            val borePath = buildSquirclePath(cx, cy, boreA, boreB, n = 3.0f)
-            drawPath(
-                path = borePath,
-                brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF09080E), Color(0xFF020205)),
-                    center = Offset(cx, cy),
-                    radius = boreA
-                )
-            )
-        }
-
-        // 2. MOVING INNER OPTICAL VIEWFINDER ELEMENT (Pure Z-axis travel: perspective scale, NO Y offset)
+        // MOVING INNER OPTICAL VIEWFINDER ELEMENT (Scheme 2: 36dp compact optical viewport)
+        // Direct glass viewport embedded into chassis - NO exterior wireframe or outer line frame
         Box(
             modifier = Modifier
-                .size(44.dp)
+                .size(36.dp)
                 .scale(zScale)
                 .clip(SquircleShape(n = 3.0f))
                 .background(Color(0xFF0A090D)),
@@ -367,7 +317,7 @@ private fun GallerySquircleOpticalHatch(
                 if (latestMedia.isVideo) {
                     Box(
                         modifier = Modifier
-                            .size(18.dp)
+                            .size(14.dp)
                             .clip(CircleShape)
                             .background(Color(0x99000000)),
                         contentAlignment = Alignment.Center
@@ -375,7 +325,7 @@ private fun GallerySquircleOpticalHatch(
                         Text(
                             text = "▶",
                             color = OneShotTheme.FilmSilver,
-                            fontSize = 9.sp
+                            fontSize = 8.sp
                         )
                     }
                 }
@@ -424,7 +374,6 @@ private fun GallerySquircleOpticalHatch(
                 val maxDim = maxOf(w, h)
 
                 // Pass 1: Fuji Optical Vignetting & Corner Light Falloff
-                // Center is completely transparent (clear view), corners softly fall off
                 drawRect(
                     brush = Brush.radialGradient(
                         0.00f to Color.Transparent,
@@ -438,7 +387,6 @@ private fun GallerySquircleOpticalHatch(
                 )
 
                 // Pass 2: Four-Corner Diffuse Light Scattering & Defocus Haze (Meniscus Acrylic/Glass Dispersion)
-                // Creates that soft dreamy optical flare in the corners
                 drawRect(
                     brush = Brush.radialGradient(
                         0.00f to Color.Transparent,
@@ -451,7 +399,7 @@ private fun GallerySquircleOpticalHatch(
                     )
                 )
 
-                // Pass 3: Subtle Asymmetric Ambient Skylight Sheen (Soft diffuse atmospheric glow, NOT a hard line)
+                // Pass 3: Subtle Asymmetric Ambient Skylight Sheen
                 drawRect(
                     brush = Brush.linearGradient(
                         colors = listOf(
@@ -464,31 +412,61 @@ private fun GallerySquircleOpticalHatch(
                     )
                 )
             }
+
+            // 2.4 DIRECT GLASS ELEMENT HIGHLIGHT CONTOUR (Authentic Beveled Optical Lens Glint)
+            // No exterior frame - the highlight contour is integrated directly onto the glass element perimeter
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val cx = w / 2f
+                val cy = h / 2f
+                val strokeW = 1.0.dp.toPx()
+                val lensPath = buildSquirclePath(
+                    cx = cx,
+                    cy = cy,
+                    a = cx - strokeW / 2f,
+                    b = cy - strokeW / 2f,
+                    n = 3.0f
+                )
+
+                // Lens Edge Chamfer Glint: top-left catches ambient key light, bottom-right softly fades
+                drawPath(
+                    path = lensPath,
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.45f * lightOcclusion),
+                            Color.White.copy(alpha = 0.18f * lightOcclusion),
+                            Color(0x18FFFFFF),
+                            Color(0x30000000)
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(w, h)
+                    ),
+                    style = Stroke(width = strokeW)
+                )
+            }
         }
     }
 }
 
 /**
- * Far Right: Classic Point-and-Shoot Mechanical Slide Switch (Squircle Optical Hatch Mirror).
+ * Far Right: Classic Point-and-Shoot Mechanical Slide Switch.
  * Authentic camera body mechanism inspired by Contax T2, Olympus Mju, and Leica Minilux slide selectors:
- * - Rigid Outer Housing Base:
- *   - Continuous-Curvature Superellipse (Xiaomi Alive n = 3.0, 50dp layout footprint)
- *   - Gunmetal anodized casing strictly matching gallery hatch (outerA = cx - 1dp, boreA = outerA - 2.4dp)
- *   - Deep mechanical borehole well with seamless dark shadow moat
- * - Moving Inner Mechanical Chamber (44dp, pure Z-axis travel: perspective scale 1.0 -> 0.95):
- *   - Upper Stencil Stage (Dual Mode Icons & Diffuse LED Glow):
- *     - Left: Solid Chiseled Alpine Twin-Peaks & Sun (Landscape / Rear Camera, Cool Cyan/White LED glow)
- *     - Right: Classical Solid Cameo Bust (Portrait / Front Camera, Warm Amber LED glow)
- *     - Inactive icon stays as a muted matte-steel laser engraving on chassis bed
- *   - Lower Recessed Slide Bay (Precision Machined Channel):
- *     - Deep borehole tolerance moat with cavity shadows & metallic slide rails
- *     - Mechanical detent travel stops at left (-7.5dp) and right (+7.5dp)
- *   - Solid Metal Slider Button (13.5dp x 11.5dp, Cold-Rolled Satin Titanium):
- *     - 4 precision-machined vertical gripping flutes (knurled anti-slip ridges)
- *     - Central beveled index datum line & pointing arrowhead pip
- *     - Crisp Ball-Detent Snap (dampingRatio = 1.0f, stiffness = 1400f): ZERO bounce or oscillation
- *     - Pure Z-axis mechanical travel on touch-down (scale: 1.0 -> 0.95, zero Y-axis translation)
- *     - Instant micro-switch tactile snap on touch-down (HapticFeedbackConstants.CONFIRM)
+ * - Scheme 2 Pyramid Architecture:
+ *   - 36dp compact layout footprint strictly matching left gallery hatch (36dp)
+ *   - Purely planar horizontal mechanism: operates along X-axis (-10dp to +10dp), strictly ZERO Z-axis scale or depression
+ * - Upper Stencil Stage (Dual Mode Icons & Diffuse LED Glow):
+ *   - Left: Solid Chiseled Alpine Twin-Peaks & Sun (Landscape / Rear Camera, Cool Cyan/White LED glow)
+ *   - Right: Classical Solid Cameo Bust (Portrait / Front Camera, Warm Amber LED glow)
+ *   - Inactive icon stays as a solid matte-steel laser engraving (Color 0xFF9492A2)
+ * - Lower Recessed Slide Bay (Precision Machined Channel, 36dp x 13.5dp):
+ *   - Full 36dp horizontal chassis span matching gallery hatch width
+ *   - Mechanical detent travel stops at left (-10dp) and right (+10dp)
+ * - Solid Metal Slider Plunger (14dp x 11dp, Cold-Rolled Satin Titanium):
+ *   - 4 precision-machined vertical gripping flutes (knurled anti-slip ridges)
+ *   - Central beveled index datum line & pointing arrowhead pip
+ *   - Crisp Ball-Detent Snap (dampingRatio = 1.0f, stiffness = 1400f): ZERO bounce or oscillation
+ *   - Tactile ball-detent confirmation click on switch lock (HapticFeedbackConstants.CONFIRM)
  */
 @Composable
 private fun MechanicalSquircleSlideSwitch(
@@ -498,8 +476,8 @@ private fun MechanicalSquircleSlideSwitch(
     modifier: Modifier = Modifier,
 ) {
     val isLandscape = lensFacing == LensFacingMode.BACK
-    // Left (-7.5dp) for Landscape; Right (+7.5dp) for Portrait
-    val targetOffset = if (isLandscape) -7.5f else 7.5f
+    // Left (-10dp) for Landscape; Right (+10dp) for Portrait
+    val targetOffset = if (isLandscape) -10.0f else 10.0f
 
     // Heavy mechanical ball-detent snap: dampingRatio = 1.0f (strictly critically damped), zero bounce or overshoot
     val animatedOffsetDp by animateFloatAsState(
@@ -512,35 +490,19 @@ private fun MechanicalSquircleSlideSwitch(
     )
 
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
     val view = LocalView.current
 
-    // Instant tactile micro-switch haptic snap on touch-down
-    LaunchedEffect(isPressed) {
-        if (isPressed) {
-            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-        }
+    // Ball-detent mechanical snap haptic feedback when switched to new lens facing
+    LaunchedEffect(lensFacing) {
+        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
     }
 
-    // Pure Z-Axis mechanical depression: 0.0f (rest) -> 1.0f (pressed down)
-    val depression by animateFloatAsState(
-        targetValue = if (isPressed) 1.0f else 0.0f,
-        animationSpec = spring(
-            dampingRatio = 0.65f,
-            stiffness = 750f
-        ),
-        label = "mechanicalSliderDepression"
-    )
-
-    val zScale = 1.0f - (0.05f * depression)
-    val lightOcclusion = 1.0f - (0.16f * depression)
-
-    // Layout footprint is strictly 50dp, perfectly matching GallerySquircleOpticalHatch
+    // Layout footprint is strictly 36dp, perfectly matching GallerySquircleOpticalHatch (Scheme 2)
+    // Note: Planar mechanical slide switch operates purely along horizontal X-axis, strictly ZERO Z-axis scale or depression
     Box(
         modifier = modifier
-            .size(50.dp)
+            .size(36.dp)
             .alpha(if (enabled) 1.0f else 0.35f)
-            .scale(zScale)
             .clickable(
                 enabled = enabled,
                 interactionSource = interactionSource,
@@ -557,11 +519,11 @@ private fun MechanicalSquircleSlideSwitch(
 
             // =====================================================================
             // 1. UPPER STENCIL STAGE: DUAL MODE ICONS & DIFFUSE LED BACKLIGHT
-            // Laser-etched directly onto chassis, vertically centered in 50dp bounds
+            // Laser-etched directly onto chassis, vertically centered in 36dp bounds
             // =====================================================================
-            val iconY = cy - 9.8.dp.toPx()
-            val landX = cx - 7.5.dp.toPx() // Left stop alignment
-            val portX = cx + 7.5.dp.toPx() // Right stop alignment
+            val iconY = cy - 8.8.dp.toPx()
+            val landX = cx - 10.0.dp.toPx() // Left stop alignment (-10dp)
+            val portX = cx + 10.0.dp.toPx() // Right stop alignment (+10dp)
             val yBase = iconY + 2.2.dp.toPx() // Shared ground baseline for both icons
 
                 // Unselected laser-engraving titanium color (high visibility solid matte metal)
@@ -606,9 +568,9 @@ private fun MechanicalSquircleSlideSwitch(
                         center = Offset(landX, iconY)
                     )
 
-                    val sunlitColor = Color.White.copy(alpha = 0.98f * lightOcclusion)
-                    val shadeColor = Color(0xFFD6DBE4).copy(alpha = 0.76f * lightOcclusion)
-                    val subPeakColor = Color.White.copy(alpha = 0.92f * lightOcclusion)
+                    val sunlitColor = Color.White.copy(alpha = 0.98f)
+                    val shadeColor = Color(0xFFD6DBE4).copy(alpha = 0.76f)
+                    val subPeakColor = Color.White.copy(alpha = 0.92f)
 
                     drawPath(path = leftPeakLit, color = sunlitColor)
                     drawPath(path = leftPeakShaded, color = shadeColor)
@@ -689,7 +651,7 @@ private fun MechanicalSquircleSlideSwitch(
                         center = Offset(portX, iconY)
                     )
 
-                    val portGlowColor = OneShotTheme.AmberGrain.copy(alpha = 0.98f * lightOcclusion)
+                    val portGlowColor = OneShotTheme.AmberGrain.copy(alpha = 0.98f)
                     // Head: solid full circular cameo
                     drawCircle(
                         color = portGlowColor,
@@ -733,9 +695,9 @@ private fun MechanicalSquircleSlideSwitch(
             // =====================================================================
             // 2. LOWER RECESSED SLIDE BAY (Machined Horizontal Channel)
             // =====================================================================
-            val trackY = cy + 5.5.dp.toPx()
-            val trackW = 31.0.dp.toPx()
-            val trackH = 14.0.dp.toPx()
+            val trackY = cy + 4.5.dp.toPx()
+            val trackW = 36.0.dp.toPx()
+            val trackH = 13.5.dp.toPx()
             val trackCorner = 3.0.dp.toPx()
 
             val trackLeft = cx - trackW / 2f
@@ -769,7 +731,7 @@ private fun MechanicalSquircleSlideSwitch(
             // 2.3 Channel Bottom Rail Specular Edge
             drawRoundRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color(0x20FFFFFF).copy(alpha = 0.15f * lightOcclusion)),
+                    colors = listOf(Color.Transparent, Color(0x20FFFFFF).copy(alpha = 0.15f)),
                     startY = trackTop + trackH - 1.5.dp.toPx(),
                     endY = trackTop + trackH
                 ),
@@ -801,21 +763,21 @@ private fun MechanicalSquircleSlideSwitch(
 
         // =====================================================================
         // 3. SOLID METAL SLIDER PLUNGER (Cold-Rolled Satin Titanium Block)
-        // Slides horizontally between -7.5dp (Left) and +7.5dp (Right)
+        // Slides horizontally between -10dp (Left) and +10dp (Right)
         // =====================================================================
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
             val cx = w / 2f
             val cy = h / 2f
-            val trackY = cy + 5.5.dp.toPx()
+            val trackY = cy + 4.5.dp.toPx()
 
                 val sliderOffsetPx = animatedOffsetDp.dp.toPx()
                 val knobCenterX = cx + sliderOffsetPx
                 val knobCenterY = trackY
 
-                val knobW = 13.5.dp.toPx()
-                val knobH = 11.5.dp.toPx()
+                val knobW = 14.0.dp.toPx()
+                val knobH = 11.0.dp.toPx()
                 val knobCorner = 2.0.dp.toPx()
                 val knobLeft = knobCenterX - knobW / 2f
                 val knobTop = knobCenterY - knobH / 2f
@@ -850,8 +812,8 @@ private fun MechanicalSquircleSlideSwitch(
                 drawRoundRect(
                     brush = Brush.linearGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.55f * lightOcclusion),
-                            Color.White.copy(alpha = 0.20f * lightOcclusion),
+                            Color.White.copy(alpha = 0.55f),
+                            Color.White.copy(alpha = 0.20f),
                             Color(0x30000000),
                             Color(0x60000000)
                         ),
@@ -878,7 +840,7 @@ private fun MechanicalSquircleSlideSwitch(
                     )
                     // Specular ridge line
                     drawLine(
-                        color = Color.White.copy(alpha = 0.50f * lightOcclusion),
+                        color = Color.White.copy(alpha = 0.50f),
                         start = Offset(fluteX - 0.35.dp.toPx(), knobTop + 1.8.dp.toPx()),
                         end = Offset(fluteX - 0.35.dp.toPx(), knobTop + knobH - 1.8.dp.toPx()),
                         strokeWidth = 0.35.dp.toPx(),
@@ -897,11 +859,11 @@ private fun MechanicalSquircleSlideSwitch(
                 }
 
                 val pipColor = if (isLandscape) OneShotTheme.FilmSilver else OneShotTheme.AmberGrain
-                drawPath(path = arrowPath, color = pipColor.copy(alpha = 0.98f * lightOcclusion))
+                drawPath(path = arrowPath, color = pipColor.copy(alpha = 0.98f))
 
                 // Illuminated Central Index Pip on Slider Face
                 drawCircle(
-                    color = pipColor.copy(alpha = 1.0f * lightOcclusion),
+                    color = pipColor.copy(alpha = 1.0f),
                     radius = 0.8.dp.toPx(),
                     center = Offset(knobCenterX, knobCenterY)
                 )
@@ -949,7 +911,7 @@ private fun MotionPhotoShutterButton(
 
     Box(
         modifier = Modifier
-            .size(54.dp)
+            .size(52.dp)
             .alpha(if (enabled) 1.0f else 0.35f)
             .clickable(
                 enabled = enabled && !isCapturing,
@@ -1152,7 +1114,7 @@ private fun MechanicalStillShutterButton(
             // Outer collar is fixed to chassis — NO scale modifier on root container!
             .alpha(if (enabled) 1.0f else 0.35f)
             .clickable(
-                enabled = enabled && !isCapturing,
+                enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick
@@ -1441,7 +1403,7 @@ private fun CinemaVideoShutterButton(
 
     Box(
         modifier = Modifier
-            .size(54.dp)
+            .size(52.dp)
             // Rigid guard collar is fixed to chassis — NO scale modifier on root container!
             .alpha(if (enabled) 1.0f else 0.35f)
             .clickable(

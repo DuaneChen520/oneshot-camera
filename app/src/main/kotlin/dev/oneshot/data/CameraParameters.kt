@@ -57,6 +57,12 @@ enum class PhotoFormat(val label: String, val extension: String, val mimeType: S
     HEIF("HEIF 高效 (HEIC)", ".heic", "image/heif"),
 }
 
+enum class VideoStabilizationMode(val label: String, val shortLabel: String, val description: String) {
+    STANDARD("标准 (纯光学 OIS)", "OIS", "100% 全画幅零裁切，无数字畸变"),
+    ENHANCED("增强 (光学+电子)", "OIS+EIS", "防抖算法介入，裁切约 10% 画面"),
+    OFF("关闭 (三脚架/云台)", "OFF", "消除马达拉扯与共振，光路纯净"),
+}
+
 enum class ColorSpacePreset(val label: String) {
     SRGB("sRGB (Rec.709)"),
     DISPLAY_P3("Display P3 广色域"),
@@ -118,6 +124,8 @@ data class CameraSettings(
     val focusPeakingEnabled: Boolean = false,
     val zebraPatternEnabled: Boolean = false,
     val histogramMode: HistogramMode = HistogramMode.OFF,
+    val videoStabilization: VideoStabilizationMode = VideoStabilizationMode.STANDARD,
+    val screenDimmerEnabled: Boolean = true,
     val hudPresets: ProHudPresets = ProHudPresets(),
     val qMenuSlots: List<QSlotItem> = QMenuDefaults.DEFAULT_SLOTS,
 )

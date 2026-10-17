@@ -68,6 +68,8 @@ class ParameterStore(private val context: Context) {
                 val peaking = prefs[KEY_PEAKING] ?: false
                 val zebra = prefs[KEY_ZEBRA] ?: false
                 val histModeName = prefs[KEY_HISTOGRAM_MODE] ?: HistogramMode.OFF.name
+                val stabName = prefs[KEY_VIDEO_STABILIZATION] ?: VideoStabilizationMode.STANDARD.name
+                val screenDim = prefs[KEY_SCREEN_DIMMER_ENABLED] ?: true
                 val autoFocus = prefs[KEY_AUTO_FOCUS] ?: true
                 val focusDist = prefs[KEY_FOCUS_DISTANCE] ?: 0.0f
                 val presetsRaw = prefs[KEY_HUD_PRESETS_JSON]
@@ -120,6 +122,8 @@ class ParameterStore(private val context: Context) {
                     focusPeakingEnabled = peaking,
                     zebraPatternEnabled = zebra,
                     histogramMode = runCatching { HistogramMode.valueOf(histModeName) }.getOrDefault(HistogramMode.OFF),
+                    videoStabilization = runCatching { VideoStabilizationMode.valueOf(stabName) }.getOrDefault(VideoStabilizationMode.STANDARD),
+                    screenDimmerEnabled = screenDim,
                     hudPresets = hudPresets,
                     qMenuSlots = qMenuSlots,
                 )
@@ -321,6 +325,14 @@ class ParameterStore(private val context: Context) {
         }
     }
 
+    fun setVideoStabilization(mode: VideoStabilizationMode) {
+        scope.launch { context.dataStore.edit { it[KEY_VIDEO_STABILIZATION] = mode.name } }
+    }
+
+    fun setScreenDimmerEnabled(enabled: Boolean) {
+        scope.launch { context.dataStore.edit { it[KEY_SCREEN_DIMMER_ENABLED] = enabled } }
+    }
+
     fun setQMenuSlots(slots: List<QSlotItem>) {
         scope.launch {
             context.dataStore.edit { prefs ->
@@ -363,6 +375,8 @@ class ParameterStore(private val context: Context) {
         val KEY_PEAKING = booleanPreferencesKey("focus_peaking")
         val KEY_ZEBRA = booleanPreferencesKey("zebra_pattern")
         val KEY_HISTOGRAM_MODE = stringPreferencesKey("histogram_mode")
+        val KEY_VIDEO_STABILIZATION = stringPreferencesKey("video_stabilization_mode")
+        val KEY_SCREEN_DIMMER_ENABLED = booleanPreferencesKey("screen_dimmer_enabled")
         val KEY_HUD_PRESETS_JSON = stringPreferencesKey("hud_presets_json")
         val KEY_Q_MENU_SLOTS_JSON = stringPreferencesKey("q_menu_slots_json")
     }
