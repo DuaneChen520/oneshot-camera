@@ -118,8 +118,8 @@
      - 录制时：红光不浮于表面，而是从金属压盘与外套筒之间的机械缝隙中呈现双层（外层漫反射 + 内层高透光红宝石光丝）向外幽幽呼吸漫溢；
   4. **沉孔暗房红珐琅点**：压盘中心微凹处填涂经典暗房红（待机深沉暗红，录制鲜活电影红）。
 
-### 4.4 右侧辅助件：超椭圆 1:1 镜面对称徕卡 M 式双挡机械视野拨杆 ([`LeicaSquircleFrameSelectorLever`](file:///e:/personalwork/oneshot/app/src/main/kotlin/dev/oneshot/ui/ShutterCluster.kt#L474))
-- **设计哲学升华**：彻底摆脱传统手机扁平、干瘪的“自拍翻转”按键心智，回归**连续曲率超椭圆外框与徕卡经典 M 系列旁轴取景框线拨杆 (Leica M Frame Selector Lever)** 语义——将后摄广角对应“风景 (Landscape)”，前摄视角对应“人像 (Portrait)”。
+### 4.4 右侧辅助件：超椭圆 1:1 镜面对称机加双挡机械滑动开关 ([`MechanicalSquircleSlideSwitch`](file:///e:/personalwork/oneshot/app/src/main/kotlin/dev/oneshot/ui/ShutterCluster.kt#L476))
+- **设计哲学升华**：彻底摆脱传统手机扁平、干瘪的“自拍翻转”按键心智，吸取经典便携胶片相机（Contax T2、Olympus μ、Leica Minilux、Ricoh GR）正统工业语汇，采用**机身内嵌式沉槽与精密冷轧钛合金防滑推钮 (Recessed Mechanical Slide Switch)**——左档位对应“风景 (Landscape / 后摄)”，右档位对应“人像 (Portrait / 前摄)”，彻底摒弃旋转拨杆带来的钟表小指针卡通感。
 - **绝对尺寸与居中对齐铁律 (Strict 1:1 Squircle Mirror Alignment)**：
   - **50dp 布局占位与绝对水平轴对齐**：根容器尺寸严格为 `50dp x 50dp`，圆心坐标 `(cx, cy)` 严格位于 `(25dp, 25dp)`，与左侧超椭圆相册视窗处于**绝对同一水平轴线，完全 1:1 镜像对称**；
   - **连续曲率超椭圆外壳 (Continuous-Curvature Squircle Housing, $n=3.0$)**：
@@ -127,21 +127,20 @@
     - 沉腔暗坑：`boreA = outerA - 2.4dp`，深黑色容差间隙阴影；
     - 内部活动基盘：`44dp x 44dp`，按压时产生纯 Z 轴透视沉降（`scale: 1.0 -> 0.95`，零 Y 轴滑动）。
 - **沉腔内部机械构造 (Internal Mechanical Anatomy)**：
-  1. **弧形钢珠定位导轨 (Detent Guide Arc Track, $r = 13.0dp$)**：
-     - 沉腔内底盘精密铣出 -34° 至 +34° 的弧形定位滑槽，两侧终点加工有微型钢珠锁死沉孔；
-     - 底部 6 点钟方位刻印一枚垂直微雕基准刻线，使整个表盘沉腔上下重心平衡饱满；
-  2. **双模式机雕图腾与物理 LED 漫射背光 (Unblocked Dual Mode Stencils & Backlit Glow, $r = 16.8dp$)**：
-     - **图腾外置无遮挡原则**：图腾半径为 16.8dp，拨杆尖端为 12.8dp，两者保持 4.0dp 绝对清晰视距，指针精准指向图腾底座，**彻底杜绝指针盖住图标的视觉缺陷**；
-     - **-34° 左上方（风景模式 / 后摄）**：精密实体阿尔卑斯双峰（迎光主峰、背阴峰、右次峰与小太阳），激活时透出物理冰青白 LED 漫射散光，未激活时沉入冷暗钛色刻印；
-     - **+34° 右上方（人像模式 / 前摄）**：古典浮雕人像胸像剪影（Cameo Bust，头部圆点与优美肩弧轮廓），激活时透出温润琥珀金 LED 漫射散光，未激活时沉入冷暗钛色刻印；
-  3. **旋转式徕卡 M 视野选择拨杆 (Leica M Frame Selector Lever)**：
-     - **悬浮真实阴影**：拨杆浮在 44dp 沉腔底盘上方，朝右下方投射柔和的遮蔽落影；
-     - **双阶梯精密轴心**：外层钛合金圈（半径 3.2dp，45° CNC 倒角），内层高精一字开槽黄铜宝石螺母（Brass Jewel Core，半径 1.7dp）；
-     - **锥形冷轧拉丝机械臂**：从轴心向外平滑延伸，左侧迎光白色高光棱，右侧深邃背光切边；
-     - **修长水滴滚花指柄与瞄准尖头**：宽度 3.8dp，表面精密铣出 3 道水平防滑齿槽，顶端收为倒角三角尖头，尖端内嵌随当前模式变色的微型瞄准宝石点 (Index Pip)；
+  1. **上半区：双模式机雕图腾与物理 LED 漫射背光 (Upper Stencil Stage)**：
+     - **左侧（风景模式 / 后摄）**：精密实体阿尔卑斯双峰（迎光主峰、背阴峰、右次峰与小太阳），后摄激活时透出纯净冰青白 LED 漫射散光，前摄时退为冷暗钛色刻印；
+     - **右侧（人像模式 / 前摄）**：古典浮雕人像胸像剪影（Cameo Bust，头部圆点与优美肩弧轮廓），前摄激活时透出温润琥珀金 LED 漫射散光，后摄时退为冷暗钛色刻印；
+     - **严格垂向对准**：左侧双峰与右侧胸像的中心 X 坐标分别严格对应滑块左右行程限位点（`±7.5dp`），准星推到哪边就正正指向上方对应图腾。
+  2. **下半区：深凹机加滑道 (Recessed Slide Bay Channel, 31dp x 14dp)**：
+     - 在沉腔下半部水平精铣一条深邃跑道形滑道，带有上槽壁遮蔽深阴影与下槽壁高光导轨线；
+     - 滑道内底刻有双导向金属滑轨与两端钢珠限位止动坑（Mechanical Travel Stops）；
+  3. **活动实体冷轧钛合金推钮 (Solid Metal Slider Plunger, 13.5dp x 11.5dp)**：
+     - 纯粹物理块体结构，四周带 CNC 45° 钻石抛光倒角棱与右下方真实沉槽落影；
+     - 表面精密铣出 **4 道纵向防滑齿纹 (Vertical Knurled Flutes)**，指推阻力感极强；
+     - 顶端正中延伸出一枚精密三角准星 (Arrowhead Tip)，内嵌随模式变色的发光微型宝石点 (Index Pip)，推到哪档就精准锚定上方的模式图腾；
   4. **真实物理钢珠卡槽定位阻尼力学 (Solid Ball-Detent Snap Physics)**：
-     - 采用严格**临界阻尼 (`dampingRatio = 1.0f`)** 与高刚度 (`stiffness = 1400f`)，旋转耗时约 140ms；
-     - 旋转落槽咬死，**0 振荡、0 漂移、0 橡皮筋回弹**；
+     - 水平行程 `15.0dp`（左 -7.5dp $\leftrightarrow$ 右 +7.5dp），采用严格**临界阻尼 (`dampingRatio = 1.0f`)** 与高刚度 (`stiffness = 1400f`)，耗时约 120ms；
+     - 极速滑行、坚决卡死，**0 振荡、0 漂移、0 橡皮筋回弹**；
      - 手指接触初态（Touch-Down）触发硬件级微动触觉震动确认（`HapticFeedbackConstants.CONFIRM`）。
 
 ### 4.5 左侧辅助件：超椭圆富士光学取景视窗 ([`GallerySquircleOpticalHatch`](file:///e:/personalwork/oneshot/app/src/main/kotlin/dev/oneshot/ui/ShutterCluster.kt#L237))

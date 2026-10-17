@@ -188,8 +188,8 @@ fun ShutterCluster(
                 }
             )
 
-            // Far Right: Leica M-Style Mechanical Frame Selector Lever (-35° Landscape <-> +35° Portrait)
-            LeicaSquircleFrameSelectorLever(
+            // Far Right: Authentic Mechanical Slide Switch (Left Landscape <-> Right Portrait)
+            MechanicalSquircleSlideSwitch(
                 lensFacing = lensFacing,
                 enabled = !status.isRecording && !status.isMotionCapturing,
                 onClick = onFlipCamera
@@ -453,45 +453,46 @@ private fun GallerySquircleOpticalHatch(
 }
 
 /**
- * Far Right: Leica M-Style Mechanical Frame Selector Lever (Squircle Optical Hatch Mirror).
- * Symmetrical and strictly 1:1 aligned with the Far-Left Gallery Viewfinder Hatch:
+ * Far Right: Classic Point-and-Shoot Mechanical Slide Switch (Squircle Optical Hatch Mirror).
+ * Authentic camera body mechanism inspired by Contax T2, Olympus Mju, and Leica Minilux slide selectors:
  * - Rigid Outer Housing Base:
  *   - Continuous-Curvature Superellipse (Xiaomi Alive n = 3.0, 50dp layout footprint)
- *   - Gunmetal anodized casing matching gallery hatch (outerA = cx - 1dp, boreA = outerA - 2.4dp)
+ *   - Gunmetal anodized casing strictly matching gallery hatch (outerA = cx - 1dp, boreA = outerA - 2.4dp)
  *   - Deep mechanical borehole well with seamless dark shadow moat
  * - Moving Inner Mechanical Chamber (44dp, pure Z-axis travel: perspective scale 1.0 -> 0.95):
- *   - Hard-anodized obsidian dial bed with precision-milled arc track (-35° to +35°)
- *   - Dual-Position Laser-Etched Icons & Diffuse LED Backlight:
- *     - -35° (Landscape / Rear Camera): Solid Chiseled Alpine Twin-Peaks & Sun, Cool Cyan/White LED glow
- *     - +35° (Portrait / Front Camera): Solid Classical Cameo Bust, Warm Amber LED glow
- *     - Inactive mode: Muted matte-steel laser engraving on chassis bed
- * - Central Leica M Frame Selector Lever:
- *   - Critical Damping (dampingRatio = 1.0f, stiffness = 1400f): ZERO bounce or oscillation, solid mechanical detent snap
- *   - Floating Lever Drop Shadow: Realistic ambient drop shadow onto the recessed chamber bed
- *   - Stepped Concentric Pivot Hub: 45° CNC diamond-chamfered titanium collar & vintage slotted brass jewel screw
- *   - Tapered Machined Lever Arm: Cold-rolled brushed metal finish with specular bevels
- *   - Classic Teardrop Knurled Finger Grip: Precision horizontal gripping flutes with illuminated index needle & pip
- *   - Instant micro-switch tactile snap on touch-down (HapticFeedbackConstants.CONFIRM)
+ *   - Upper Stencil Stage (Dual Mode Icons & Diffuse LED Glow):
+ *     - Left: Solid Chiseled Alpine Twin-Peaks & Sun (Landscape / Rear Camera, Cool Cyan/White LED glow)
+ *     - Right: Classical Solid Cameo Bust (Portrait / Front Camera, Warm Amber LED glow)
+ *     - Inactive icon stays as a muted matte-steel laser engraving on chassis bed
+ *   - Lower Recessed Slide Bay (Precision Machined Channel):
+ *     - Deep borehole tolerance moat with cavity shadows & metallic slide rails
+ *     - Mechanical detent travel stops at left (-7.5dp) and right (+7.5dp)
+ *   - Solid Metal Slider Button (13.5dp x 11.5dp, Cold-Rolled Satin Titanium):
+ *     - 4 precision-machined vertical gripping flutes (knurled anti-slip ridges)
+ *     - Central beveled index datum line & pointing arrowhead pip
+ *     - Crisp Ball-Detent Snap (dampingRatio = 1.0f, stiffness = 1400f): ZERO bounce or oscillation
+ *     - Pure Z-axis mechanical travel on touch-down (scale: 1.0 -> 0.95, zero Y-axis translation)
+ *     - Instant micro-switch tactile snap on touch-down (HapticFeedbackConstants.CONFIRM)
  */
 @Composable
-private fun LeicaSquircleFrameSelectorLever(
+private fun MechanicalSquircleSlideSwitch(
     lensFacing: LensFacingMode,
     enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isLandscape = lensFacing == LensFacingMode.BACK
-    // -34° pointing to Landscape (left); +34° pointing to Portrait (right)
-    val targetRotation = if (isLandscape) -34f else 34f
+    // Left (-7.5dp) for Landscape; Right (+7.5dp) for Portrait
+    val targetOffset = if (isLandscape) -7.5f else 7.5f
 
     // Heavy mechanical ball-detent snap: dampingRatio = 1.0f (strictly critically damped), zero bounce or overshoot
-    val animatedRotation by animateFloatAsState(
-        targetValue = targetRotation,
+    val animatedOffsetDp by animateFloatAsState(
+        targetValue = targetOffset,
         animationSpec = spring(
             dampingRatio = 1.0f,
             stiffness = 1400f
         ),
-        label = "leicaLeverRotation"
+        label = "mechanicalSliderOffset"
     )
 
     val interactionSource = remember { MutableInteractionSource() }
@@ -512,7 +513,7 @@ private fun LeicaSquircleFrameSelectorLever(
             dampingRatio = 0.65f,
             stiffness = 750f
         ),
-        label = "leicaLeverDepression"
+        label = "mechanicalSliderDepression"
     )
 
     val zScale = 1.0f - (0.05f * depression)
@@ -579,16 +580,11 @@ private fun LeicaSquircleFrameSelectorLever(
                 .background(Color(0xFF0E0D13)),
             contentAlignment = Alignment.Center
         ) {
-            val rad34 = Math.toRadians(34.0)
-            val sin34 = sin(rad34).toFloat()
-            val cos34 = cos(rad34).toFloat()
-
-            // 2.1 CHAMBER BED: Detent Arc Track, Dual Mode Icons & Backlit LED Glow
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val w = size.width
                 val h = size.height
                 val cx = w / 2f
-                val cy = h * 0.52f // Balanced mechanical pivot center
+                val cy = h / 2f
 
                 // Chamber Bed Radial Shading (Subtle deep-well depth from top-left lighting)
                 drawCircle(
@@ -601,91 +597,33 @@ private fun LeicaSquircleFrameSelectorLever(
                     center = Offset(cx, cy)
                 )
 
-                // ---------------------------------------------------------------------
-                // Milled Detent Guide Arc Track (Behind lever tip, radius = 13.0dp)
-                // ---------------------------------------------------------------------
-                val trackRadius = 13.0.dp.toPx()
-                val trackRect = Rect(
-                    left = cx - trackRadius,
-                    top = cy - trackRadius,
-                    right = cx + trackRadius,
-                    bottom = cy + trackRadius
-                )
-                // Detent Trough Shadow
-                drawArc(
-                    color = Color(0x60000000),
-                    startAngle = 232f, // -128°
-                    sweepAngle = 76f,  // spans across -34° to +34°
-                    useCenter = false,
-                    topLeft = trackRect.topLeft,
-                    size = trackRect.size,
-                    style = Stroke(width = 1.6.dp.toPx(), cap = StrokeCap.Round)
-                )
-                // Detent Trough Specular Floor
-                drawArc(
-                    color = Color(0x18FFFFFF),
-                    startAngle = 234f,
-                    sweepAngle = 72f,
-                    useCenter = false,
-                    topLeft = trackRect.topLeft,
-                    size = trackRect.size,
-                    style = Stroke(width = 0.6.dp.toPx(), cap = StrokeCap.Round)
-                )
-
-                // Ball-Detent End Notch Pits (-34° left, +34° right)
-                val pitLeftX = cx - trackRadius * sin34
-                val pitRightX = cx + trackRadius * sin34
-                val pitY = cy - trackRadius * cos34
-
-                drawCircle(color = Color(0xFF060608), radius = 1.2.dp.toPx(), center = Offset(pitLeftX, pitY))
-                drawCircle(color = Color(0xFF060608), radius = 1.2.dp.toPx(), center = Offset(pitRightX, pitY))
-
-                // Bottom 6 o'clock Milled Index Datum Line
-                drawLine(
-                    color = Color(0x35FFFFFF).copy(alpha = 0.25f * lightOcclusion),
-                    start = Offset(cx, cy + 9.0.dp.toPx()),
-                    end = Offset(cx, cy + 13.2.dp.toPx()),
-                    strokeWidth = 0.65.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-                drawLine(
-                    color = Color(0x40000000),
-                    start = Offset(cx - 0.7.dp.toPx(), cy + 9.0.dp.toPx()),
-                    end = Offset(cx - 0.7.dp.toPx(), cy + 13.2.dp.toPx()),
-                    strokeWidth = 0.5.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-
-                // ---------------------------------------------------------------------
-                // Polar Coordinates for Dual Mode Icons (r = 16.8dp at -34° and +34°)
-                // Strictly placed OUTSIDE the lever tip (12.8dp), completely unblocked!
-                // ---------------------------------------------------------------------
-                val iconDist = 16.8.dp.toPx()
-                val landX = cx - iconDist * sin34
-                val landY = cy - iconDist * cos34
-                val portX = cx + iconDist * sin34
-                val portY = cy - iconDist * cos34
-
                 // =====================================================================
-                // LEFT (-34°): Landscape Mode (Alpine Mountain Range & Decisive Sun Pip)
-                // Precision Solid Chiseled Silhouette with Sunlit and Shaded Facets
+                // 2.1 UPPER STENCIL STAGE: DUAL MODE ICONS & DIFFUSE LED BACKLIGHT
+                // Placed strictly above the slide track, perfectly aligned with stops
                 // =====================================================================
-                val yBase = landY + 2.0.dp.toPx()
+                val iconY = 12.2.dp.toPx()
+                val landX = cx - 7.5.dp.toPx() // Left stop alignment
+                val portX = cx + 7.5.dp.toPx() // Right stop alignment
+
+                // ---------------------------------------------------------------------
+                // (A) LEFT: Landscape Mode (Alpine Mountain Range & Decisive Sun Pip)
+                // ---------------------------------------------------------------------
+                val yBase = iconY + 2.0.dp.toPx()
                 val leftFace = Path().apply {
                     moveTo(landX - 3.8.dp.toPx(), yBase)
-                    lineTo(landX - 1.2.dp.toPx(), landY - 2.2.dp.toPx())
+                    lineTo(landX - 1.2.dp.toPx(), iconY - 2.2.dp.toPx())
                     lineTo(landX - 0.3.dp.toPx(), yBase)
                     close()
                 }
                 val shadeFace = Path().apply {
-                    moveTo(landX - 1.2.dp.toPx(), landY - 2.2.dp.toPx())
+                    moveTo(landX - 1.2.dp.toPx(), iconY - 2.2.dp.toPx())
                     lineTo(landX + 0.8.dp.toPx(), yBase)
                     lineTo(landX - 0.3.dp.toPx(), yBase)
                     close()
                 }
                 val rightPeak = Path().apply {
                     moveTo(landX + 0.4.dp.toPx(), yBase)
-                    lineTo(landX + 2.3.dp.toPx(), landY - 1.1.dp.toPx())
+                    lineTo(landX + 2.3.dp.toPx(), iconY - 1.1.dp.toPx())
                     lineTo(landX + 3.8.dp.toPx(), yBase)
                     close()
                 }
@@ -698,11 +636,11 @@ private fun LeicaSquircleFrameSelectorLever(
                             0.45f to Color(0x2806B6D4),
                             0.78f to Color(0x0C00E5FF),
                             1.00f to Color.Transparent,
-                            center = Offset(landX, landY),
+                            center = Offset(landX, iconY),
                             radius = 7.5.dp.toPx()
                         ),
                         radius = 7.5.dp.toPx(),
-                        center = Offset(landX, landY)
+                        center = Offset(landX, iconY)
                     )
 
                     val sunlitColor = Color.White.copy(alpha = 0.98f * lightOcclusion)
@@ -717,7 +655,7 @@ private fun LeicaSquircleFrameSelectorLever(
                     drawCircle(
                         color = sunlitColor,
                         radius = 0.85.dp.toPx(),
-                        center = Offset(landX + 2.5.dp.toPx(), landY - 2.6.dp.toPx())
+                        center = Offset(landX + 2.5.dp.toPx(), iconY - 2.6.dp.toPx())
                     )
                     // Baseline grounding bar
                     drawLine(
@@ -739,7 +677,7 @@ private fun LeicaSquircleFrameSelectorLever(
                     drawCircle(
                         color = mutedPaint,
                         radius = 0.75.dp.toPx(),
-                        center = Offset(landX + 2.5.dp.toPx(), landY - 2.6.dp.toPx())
+                        center = Offset(landX + 2.5.dp.toPx(), iconY - 2.6.dp.toPx())
                     )
                     drawLine(
                         color = mutedPaint.copy(alpha = 0.45f),
@@ -750,22 +688,21 @@ private fun LeicaSquircleFrameSelectorLever(
                     )
                 }
 
-                // =====================================================================
-                // RIGHT (+34°): Portrait Mode (Classical Cameo Silhouette Bust)
-                // Precision Solid Cameo Silhouette with Head and Tapered Shoulder Contour
-                // =====================================================================
+                // ---------------------------------------------------------------------
+                // (B) RIGHT: Portrait Mode (Classical Cameo Silhouette Bust)
+                // ---------------------------------------------------------------------
                 val bustSilhouette = Path().apply {
-                    moveTo(portX - 1.1.dp.toPx(), portY + 0.2.dp.toPx())
+                    moveTo(portX - 1.1.dp.toPx(), iconY + 0.2.dp.toPx())
                     cubicTo(
-                        portX - 2.2.dp.toPx(), portY + 0.3.dp.toPx(),
-                        portX - 3.4.dp.toPx(), portY + 1.0.dp.toPx(),
-                        portX - 3.7.dp.toPx(), portY + 2.1.dp.toPx()
+                        portX - 2.2.dp.toPx(), iconY + 0.3.dp.toPx(),
+                        portX - 3.4.dp.toPx(), iconY + 1.0.dp.toPx(),
+                        portX - 3.7.dp.toPx(), iconY + 2.1.dp.toPx()
                     )
-                    lineTo(portX + 3.7.dp.toPx(), portY + 2.1.dp.toPx())
+                    lineTo(portX + 3.7.dp.toPx(), iconY + 2.1.dp.toPx())
                     cubicTo(
-                        portX + 3.4.dp.toPx(), portY + 1.0.dp.toPx(),
-                        portX + 2.2.dp.toPx(), portY + 0.3.dp.toPx(),
-                        portX + 1.1.dp.toPx(), portY + 0.2.dp.toPx()
+                        portX + 3.4.dp.toPx(), iconY + 1.0.dp.toPx(),
+                        portX + 2.2.dp.toPx(), iconY + 0.3.dp.toPx(),
+                        portX + 1.1.dp.toPx(), iconY + 0.2.dp.toPx()
                     )
                     close()
                 }
@@ -778,11 +715,11 @@ private fun LeicaSquircleFrameSelectorLever(
                             0.45f to Color(0x35F59E0B),
                             0.78f to Color(0x10D97706),
                             1.00f to Color.Transparent,
-                            center = Offset(portX, portY),
+                            center = Offset(portX, iconY),
                             radius = 7.5.dp.toPx()
                         ),
                         radius = 7.5.dp.toPx(),
-                        center = Offset(portX, portY)
+                        center = Offset(portX, iconY)
                     )
 
                     val portGlowColor = OneShotTheme.AmberGrain.copy(alpha = 0.98f * lightOcclusion)
@@ -790,7 +727,7 @@ private fun LeicaSquircleFrameSelectorLever(
                     drawCircle(
                         color = portGlowColor,
                         radius = 1.45.dp.toPx(),
-                        center = Offset(portX, portY - 1.8.dp.toPx())
+                        center = Offset(portX, iconY - 1.8.dp.toPx())
                     )
                     // Shoulders / bust silhouette
                     drawPath(
@@ -803,234 +740,187 @@ private fun LeicaSquircleFrameSelectorLever(
                     drawCircle(
                         color = mutedPaint,
                         radius = 1.3.dp.toPx(),
-                        center = Offset(portX, portY - 1.8.dp.toPx())
+                        center = Offset(portX, iconY - 1.8.dp.toPx())
                     )
                     drawPath(
                         path = bustSilhouette,
                         color = mutedPaint.copy(alpha = 0.70f)
                     )
                 }
+
+                // =====================================================================
+                // 2.2 LOWER RECESSED SLIDE BAY (Machined Horizontal Channel)
+                // =====================================================================
+                val trackY = 27.5.dp.toPx()
+                val trackW = 31.0.dp.toPx()
+                val trackH = 14.0.dp.toPx()
+                val trackCorner = 3.0.dp.toPx()
+
+                val trackLeft = cx - trackW / 2f
+                val trackTop = trackY - trackH / 2f
+                val trackRect = Rect(trackLeft, trackTop, trackLeft + trackW, trackTop + trackH)
+
+                // 2.2.1 Deep Machined Channel Cavity (Dark Moat Well)
+                drawRoundRect(
+                    brush = Brush.linearGradient(
+                        colors = listOf(Color(0xFF040406), Color(0xFF0A090F), Color(0xFF100F15)),
+                        start = Offset(trackLeft, trackTop),
+                        end = Offset(trackLeft, trackTop + trackH)
+                    ),
+                    topLeft = trackRect.topLeft,
+                    size = trackRect.size,
+                    cornerRadius = CornerRadius(trackCorner, trackCorner)
+                )
+
+                // 2.2.2 Channel Upper Wall Drop Shadow
+                drawRoundRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color(0x90000000), Color(0x30000000), Color.Transparent),
+                        startY = trackTop,
+                        endY = trackTop + 3.0.dp.toPx()
+                    ),
+                    topLeft = trackRect.topLeft,
+                    size = trackRect.size,
+                    cornerRadius = CornerRadius(trackCorner, trackCorner)
+                )
+
+                // 2.2.3 Channel Bottom Rail Specular Edge
+                drawRoundRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color(0x20FFFFFF).copy(alpha = 0.15f * lightOcclusion)),
+                        startY = trackTop + trackH - 1.5.dp.toPx(),
+                        endY = trackTop + trackH
+                    ),
+                    topLeft = trackRect.topLeft,
+                    size = trackRect.size,
+                    cornerRadius = CornerRadius(trackCorner, trackCorner)
+                )
+
+                // 2.2.4 Machined Slide Rail Track Lines (Horizontal Guide Rails)
+                val railY1 = trackY - 2.8.dp.toPx()
+                val railY2 = trackY + 2.8.dp.toPx()
+                drawLine(
+                    color = Color(0x18FFFFFF),
+                    start = Offset(trackLeft + 2.dp.toPx(), railY1),
+                    end = Offset(trackLeft + trackW - 2.dp.toPx(), railY1),
+                    strokeWidth = 0.5.dp.toPx()
+                )
+                drawLine(
+                    color = Color(0x18FFFFFF),
+                    start = Offset(trackLeft + 2.dp.toPx(), railY2),
+                    end = Offset(trackLeft + trackW - 2.dp.toPx(), railY2),
+                    strokeWidth = 0.5.dp.toPx()
+                )
+
+                // 2.2.5 Ball-Detent Mechanical Travel Stops (Left & Right indents)
+                drawCircle(color = Color(0xFF060509), radius = 1.0.dp.toPx(), center = Offset(landX, trackY))
+                drawCircle(color = Color(0xFF060509), radius = 1.0.dp.toPx(), center = Offset(portX, trackY))
             }
 
-            // 2.2 ROTATING LEICA M MECHANICAL FRAME SELECTOR LEVER
-            // Pure Critical Damping Ball-Detent Snap (-34° <-> +34°)
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .rotate(animatedRotation)
-            ) {
+            // =====================================================================
+            // 2.3 SOLID METAL SLIDER PLUNGER (Cold-Rolled Satin Titanium Block)
+            // Slides horizontally between -7.5dp (Left) and +7.5dp (Right)
+            // =====================================================================
+            Canvas(modifier = Modifier.fillMaxSize()) {
                 val w = size.width
                 val h = size.height
                 val cx = w / 2f
-                val cy = h * 0.52f
+                val trackY = 27.5.dp.toPx()
 
-                // ---------------------------------------------------------------------
-                // (A) AMBIENT DROP SHADOW (Lever suspended above the chamber bed)
-                // ---------------------------------------------------------------------
-                val shadowOffsetX = 1.0.dp.toPx()
-                val shadowOffsetY = 1.3.dp.toPx()
-                val shadowColor = Color(0x75000000)
+                val sliderOffsetPx = animatedOffsetDp.dp.toPx()
+                val knobCenterX = cx + sliderOffsetPx
+                val knobCenterY = trackY
 
-                // Arm Shadow
-                val shadowArm = Path().apply {
-                    moveTo(cx - 1.2.dp.toPx() + shadowOffsetX, cy - 3.0.dp.toPx() + shadowOffsetY)
-                    lineTo(cx - 0.9.dp.toPx() + shadowOffsetX, cy - 8.2.dp.toPx() + shadowOffsetY)
-                    lineTo(cx + 0.9.dp.toPx() + shadowOffsetX, cy - 8.2.dp.toPx() + shadowOffsetY)
-                    lineTo(cx + 1.2.dp.toPx() + shadowOffsetX, cy - 3.0.dp.toPx() + shadowOffsetY)
-                    close()
-                }
-                drawPath(path = shadowArm, color = shadowColor)
+                val knobW = 13.5.dp.toPx()
+                val knobH = 11.5.dp.toPx()
+                val knobCorner = 2.0.dp.toPx()
+                val knobLeft = knobCenterX - knobW / 2f
+                val knobTop = knobCenterY - knobH / 2f
 
-                // Grip Head Shadow
-                val shadowHead = Path().apply {
-                    moveTo(cx - 1.9.dp.toPx() + shadowOffsetX, cy - 8.2.dp.toPx() + shadowOffsetY)
-                    lineTo(cx - 1.9.dp.toPx() + shadowOffsetX, cy - 11.6.dp.toPx() + shadowOffsetY)
-                    lineTo(cx + shadowOffsetX, cy - 12.8.dp.toPx() + shadowOffsetY)
-                    lineTo(cx + 1.9.dp.toPx() + shadowOffsetX, cy - 11.6.dp.toPx() + shadowOffsetY)
-                    lineTo(cx + 1.9.dp.toPx() + shadowOffsetX, cy - 8.2.dp.toPx() + shadowOffsetY)
-                    close()
-                }
-                drawPath(path = shadowHead, color = shadowColor)
+                // 2.3.1 Slider Ambient Drop Shadow onto Track Floor
+                val shadowOffset = 1.0.dp.toPx()
+                drawRoundRect(
+                    color = Color(0x80000000),
+                    topLeft = Offset(knobLeft + shadowOffset, knobTop + shadowOffset * 1.2f),
+                    size = Size(knobW, knobH),
+                    cornerRadius = CornerRadius(knobCorner, knobCorner)
+                )
 
-                // ---------------------------------------------------------------------
-                // (B) TAPERED MACHINED LEVER ARM (Satin Titanium / Brushed Steel)
-                // ---------------------------------------------------------------------
-                val armPath = Path().apply {
-                    moveTo(cx - 1.2.dp.toPx(), cy - 3.0.dp.toPx())
-                    lineTo(cx - 0.9.dp.toPx(), cy - 8.2.dp.toPx())
-                    lineTo(cx + 0.9.dp.toPx(), cy - 8.2.dp.toPx())
-                    lineTo(cx + 1.2.dp.toPx(), cy - 3.0.dp.toPx())
-                    close()
-                }
-
-                // Arm Metal Body Shading (Left-lit cold-rolled steel finish)
-                drawPath(
-                    path = armPath,
+                // 2.3.2 Solid Titanium Plunger Body
+                drawRoundRect(
                     brush = Brush.linearGradient(
                         colors = listOf(
-                            Color(0xFF888696),
-                            Color(0xFFA6A4B6),
-                            Color(0xFF6E6C7C),
-                            Color(0xFF565462)
+                            Color(0xFF8C8A9A),
+                            Color(0xFFAFAEC0),
+                            Color(0xFF706E7E),
+                            Color(0xFF565463)
                         ),
-                        start = Offset(cx - 1.2.dp.toPx(), cy - 3.0.dp.toPx()),
-                        end = Offset(cx + 1.2.dp.toPx(), cy - 3.0.dp.toPx())
-                    )
+                        start = Offset(knobLeft, knobTop),
+                        end = Offset(knobLeft + knobW, knobTop + knobH)
+                    ),
+                    topLeft = Offset(knobLeft, knobTop),
+                    size = Size(knobW, knobH),
+                    cornerRadius = CornerRadius(knobCorner, knobCorner)
                 )
 
-                // Arm Left Specular Chamfer Edge (Highlights direction from top-left)
-                drawLine(
-                    color = Color.White.copy(alpha = 0.45f * lightOcclusion),
-                    start = Offset(cx - 1.2.dp.toPx(), cy - 3.0.dp.toPx()),
-                    end = Offset(cx - 0.9.dp.toPx(), cy - 8.2.dp.toPx()),
-                    strokeWidth = 0.4.dp.toPx()
-                )
-                // Arm Right Shade Edge
-                drawLine(
-                    color = Color(0x40000000),
-                    start = Offset(cx + 1.2.dp.toPx(), cy - 3.0.dp.toPx()),
-                    end = Offset(cx + 0.9.dp.toPx(), cy - 8.2.dp.toPx()),
-                    strokeWidth = 0.4.dp.toPx()
-                )
-
-                // ---------------------------------------------------------------------
-                // (C) LEICA M SLIM TEARDROP KNURLED FINGER GRIP (Fluted Gripping Head)
-                // ---------------------------------------------------------------------
-                val headPath = Path().apply {
-                    moveTo(cx - 1.9.dp.toPx(), cy - 8.2.dp.toPx())
-                    lineTo(cx - 1.9.dp.toPx(), cy - 11.6.dp.toPx())
-                    lineTo(cx, cy - 12.8.dp.toPx()) // Crisp pointing index pip
-                    lineTo(cx + 1.9.dp.toPx(), cy - 11.6.dp.toPx())
-                    lineTo(cx + 1.9.dp.toPx(), cy - 8.2.dp.toPx())
-                    close()
-                }
-
-                // Solid Titanium Fluted Head Body
-                drawPath(
-                    path = headPath,
+                // 2.3.3 CNC Diamond Chamfer Perimeter Bevel
+                drawRoundRect(
                     brush = Brush.linearGradient(
                         colors = listOf(
-                            Color(0xFF7E7C8C),
-                            Color(0xFFB0AEBF),
-                            Color(0xFFD0CEDF),
-                            Color(0xFF6B6978)
+                            Color.White.copy(alpha = 0.55f * lightOcclusion),
+                            Color.White.copy(alpha = 0.20f * lightOcclusion),
+                            Color(0x30000000),
+                            Color(0x60000000)
                         ),
-                        start = Offset(cx - 1.9.dp.toPx(), cy - 10.0.dp.toPx()),
-                        end = Offset(cx + 1.9.dp.toPx(), cy - 10.0.dp.toPx())
-                    )
+                        start = Offset(knobLeft, knobTop),
+                        end = Offset(knobLeft + knobW, knobTop + knobH)
+                    ),
+                    topLeft = Offset(knobLeft, knobTop),
+                    size = Size(knobW, knobH),
+                    cornerRadius = CornerRadius(knobCorner, knobCorner),
+                    style = Stroke(width = 0.65.dp.toPx())
                 )
 
-                // Precision Horizontal Fluted Knurl Grooves (3 milled anti-slip ribs)
-                val knurlOffsets = listOf(8.8.dp.toPx(), 9.8.dp.toPx(), 10.8.dp.toPx())
-                for (offsetY in knurlOffsets) {
-                    val y = cy - offsetY
-                    val halfW = 1.6.dp.toPx()
+                // 2.3.4 4 Precision-Machined Vertical Gripping Flutes (Knurled Anti-Slip Ribs)
+                val fluteSpacing = knobW / 5f
+                for (i in 1..4) {
+                    val fluteX = knobLeft + i * fluteSpacing
                     // Shadow groove
                     drawLine(
-                        color = Color(0x60000000),
-                        start = Offset(cx - halfW, y),
-                        end = Offset(cx + halfW, y),
-                        strokeWidth = 0.65.dp.toPx(),
+                        color = Color(0x65000000),
+                        start = Offset(fluteX, knobTop + 1.8.dp.toPx()),
+                        end = Offset(fluteX, knobTop + knobH - 1.8.dp.toPx()),
+                        strokeWidth = 0.7.dp.toPx(),
                         cap = StrokeCap.Round
                     )
                     // Specular ridge line
                     drawLine(
-                        color = Color.White.copy(alpha = 0.55f * lightOcclusion),
-                        start = Offset(cx - halfW, y - 0.3.dp.toPx()),
-                        end = Offset(cx + halfW, y - 0.3.dp.toPx()),
+                        color = Color.White.copy(alpha = 0.50f * lightOcclusion),
+                        start = Offset(fluteX - 0.35.dp.toPx(), knobTop + 1.8.dp.toPx()),
+                        end = Offset(fluteX - 0.35.dp.toPx(), knobTop + knobH - 1.8.dp.toPx()),
                         strokeWidth = 0.35.dp.toPx(),
                         cap = StrokeCap.Round
                     )
                 }
 
-                // Beveled Outer Edge Contour
-                drawPath(
-                    path = headPath,
-                    brush = Brush.sweepGradient(
-                        0.00f to Color.White.copy(alpha = 0.35f * lightOcclusion),
-                        0.25f to Color(0x20000000),
-                        0.50f to Color.White.copy(alpha = 0.30f * lightOcclusion),
-                        0.75f to Color.White.copy(alpha = 0.70f * lightOcclusion),
-                        1.00f to Color.White.copy(alpha = 0.35f * lightOcclusion),
-                        center = Offset(cx, cy - 10.5.dp.toPx())
-                    ),
-                    style = Stroke(width = 0.5.dp.toPx())
-                )
+                // 2.3.5 Triangular Index Pip at Top Center of Slider (Pointing Up to Mode Stencil)
+                val arrowTipY = knobTop - 1.6.dp.toPx()
+                val arrowBaseY = knobTop + 0.3.dp.toPx()
+                val arrowPath = Path().apply {
+                    moveTo(knobCenterX, arrowTipY)
+                    lineTo(knobCenterX - 1.6.dp.toPx(), arrowBaseY)
+                    lineTo(knobCenterX + 1.6.dp.toPx(), arrowBaseY)
+                    close()
+                }
 
-                // Luminous Infill Index Pip at Lever Tip
                 val pipColor = if (isLandscape) OneShotTheme.FilmSilver else OneShotTheme.AmberGrain
+                drawPath(path = arrowPath, color = pipColor.copy(alpha = 0.98f * lightOcclusion))
+
+                // Illuminated Central Index Pip on Slider Face
                 drawCircle(
-                    color = pipColor.copy(alpha = 0.98f * lightOcclusion),
-                    radius = 0.75.dp.toPx(),
-                    center = Offset(cx, cy - 11.9.dp.toPx())
-                )
-
-                // ---------------------------------------------------------------------
-                // (D) STEPPED CONCENTRIC PIVOT HUB & VINTAGE SLOTTED BRASS CORE
-                // ---------------------------------------------------------------------
-                val hubRadius = 3.2.dp.toPx()
-
-                // Cold-Rolled Titanium Collar Hub
-                drawCircle(
-                    brush = Brush.linearGradient(
-                        colors = listOf(Color(0xFF565462), Color(0xFF888698), Color(0xFFC0BECF), Color(0xFF42404D)),
-                        start = Offset(cx - hubRadius, cy - hubRadius),
-                        end = Offset(cx + hubRadius, cy + hubRadius)
-                    ),
-                    radius = hubRadius,
-                    center = Offset(cx, cy)
-                )
-
-                // CNC Diamond Chamfer Perimeter Bevel
-                drawCircle(
-                    brush = Brush.sweepGradient(
-                        0.00f to Color.White.copy(alpha = 0.20f * lightOcclusion),
-                        0.25f to Color.Transparent,
-                        0.50f to Color.White.copy(alpha = 0.30f * lightOcclusion),
-                        0.70f to Color.White.copy(alpha = 0.85f * lightOcclusion),
-                        1.00f to Color.White.copy(alpha = 0.20f * lightOcclusion),
-                        center = Offset(cx, cy)
-                    ),
-                    radius = hubRadius,
-                    center = Offset(cx, cy),
-                    style = Stroke(width = 0.6.dp.toPx())
-                )
-
-                // Mechanical Tolerance Moat
-                val moatRadius = 2.2.dp.toPx()
-                drawCircle(
-                    color = Color(0xFF0A0A0E),
-                    radius = moatRadius,
-                    center = Offset(cx, cy)
-                )
-
-                // Vintage Slotted Brass Jewel Core
-                val brassRadius = 1.7.dp.toPx()
-                drawCircle(
-                    brush = Brush.linearGradient(
-                        colors = listOf(Color(0xFFFFD278), Color(0xFFC48E32), Color(0xFF6B4B14)),
-                        start = Offset(cx - brassRadius, cy - brassRadius),
-                        end = Offset(cx + brassRadius, cy + brassRadius)
-                    ),
-                    radius = brassRadius,
-                    center = Offset(cx, cy)
-                )
-
-                // Precision Machine Screw Slot (Horizontal)
-                drawLine(
-                    color = Color(0xFF141318),
-                    start = Offset(cx - 0.9.dp.toPx(), cy),
-                    end = Offset(cx + 0.9.dp.toPx(), cy),
-                    strokeWidth = 0.5.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-                // Screw Slot Bottom Glint
-                drawLine(
-                    color = Color(0x60FFFFFF).copy(alpha = 0.4f * lightOcclusion),
-                    start = Offset(cx - 0.9.dp.toPx(), cy + 0.25.dp.toPx()),
-                    end = Offset(cx + 0.9.dp.toPx(), cy + 0.25.dp.toPx()),
-                    strokeWidth = 0.25.dp.toPx(),
-                    cap = StrokeCap.Round
+                    color = pipColor.copy(alpha = 1.0f * lightOcclusion),
+                    radius = 0.8.dp.toPx(),
+                    center = Offset(knobCenterX, knobCenterY)
                 )
             }
         }
