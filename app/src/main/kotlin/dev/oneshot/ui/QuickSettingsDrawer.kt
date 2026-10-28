@@ -1500,8 +1500,10 @@ private fun cycleSlot(
             onSetPhotoFormat(next)
         }
         QSlotItem.MOTION_DURATION -> {
-            val next = if (settings.motionDuration == MotionDurationPreset.DUR_1_5S) MotionDurationPreset.DUR_3_0S else MotionDurationPreset.DUR_1_5S
-            onSetMotionDuration(next)
+            val list = MotionDurationPreset.entries
+            val currentIndex = list.indexOf(settings.motionDuration)
+            val nextIndex = (if (currentIndex >= 0) currentIndex + 1 else 0) % list.size
+            onSetMotionDuration(list[nextIndex])
         }
         QSlotItem.FOCUS_PEAKING -> {
             onToggleFocusPeaking(!settings.focusPeakingEnabled)
@@ -1561,7 +1563,7 @@ private fun getSlotDisplayValue(
     }
     QSlotItem.DCG_HDR -> if (settings.dcgHdrEnabled) "开启" else "关闭"
     QSlotItem.PHOTO_FORMAT -> if (settings.photoFormat == PhotoFormat.JPEG) "JPEG" else "HEIF"
-    QSlotItem.MOTION_DURATION -> if (settings.motionDuration == MotionDurationPreset.DUR_1_5S) "1.5s" else "3.0s"
+    QSlotItem.MOTION_DURATION -> "${settings.motionDuration.seconds}s"
     QSlotItem.FOCUS_PEAKING -> if (settings.focusPeakingEnabled) "开启" else "关闭"
     QSlotItem.ZEBRA_PATTERN -> if (settings.zebraPatternEnabled) "开启" else "关闭"
     QSlotItem.VIDEO_CODEC -> if (settings.videoCodec == VideoCodec.HEVC) "HEVC" else "H.264"

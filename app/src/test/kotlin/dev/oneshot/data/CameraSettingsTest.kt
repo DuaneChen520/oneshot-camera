@@ -20,7 +20,7 @@ class CameraSettingsTest {
         assertEquals(5500, settings.cctKelvin)
         assertEquals(1.0f, settings.zoomRatio)
         assertTrue(settings.ultraHdrEnabled)
-        assertEquals(MotionDurationPreset.DUR_1_5S, settings.motionDuration)
+        assertEquals(MotionDurationPreset.DUR_3_0S, settings.motionDuration)
         assertEquals(VolumeKeyAction.STILL_SHUTTER, settings.volumeKeyUpAction)
         assertEquals(VolumeKeyAction.VIDEO_SHUTTER, settings.volumeKeyDownAction)
         assertTrue(settings.isAutoShutter)
@@ -132,7 +132,16 @@ class CameraSettingsTest {
     @Test
     fun testMotionDurationPresets() {
         assertEquals(1.5f, MotionDurationPreset.DUR_1_5S.seconds)
+        assertEquals(0.8f, MotionDurationPreset.DUR_1_5S.preRollSeconds)
+        assertEquals(0.7f, MotionDurationPreset.DUR_1_5S.postRollSeconds)
+
         assertEquals(3.0f, MotionDurationPreset.DUR_3_0S.seconds)
+        assertEquals(1.5f, MotionDurationPreset.DUR_3_0S.preRollSeconds)
+        assertEquals(1.5f, MotionDurationPreset.DUR_3_0S.postRollSeconds)
+
+        assertEquals(5.0f, MotionDurationPreset.DUR_5_0S.seconds)
+        assertEquals(2.5f, MotionDurationPreset.DUR_5_0S.preRollSeconds)
+        assertEquals(2.5f, MotionDurationPreset.DUR_5_0S.postRollSeconds)
     }
 
     @Test

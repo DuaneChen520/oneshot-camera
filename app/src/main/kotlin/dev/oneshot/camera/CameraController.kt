@@ -208,6 +208,8 @@ class CameraController(
         }
 
         // 1. Build Preview with matching AspectRatioStrategy and DynamicRange
+        val targetDcgValue = DcgHdrConfig.resolveDcgValue(effectiveSettings.dcgHdrEnabled, detectedCaps.isDcgSupported)
+
         val previewResolutionSelector = ResolutionSelector.Builder()
             .setAspectRatioStrategy(
                 AspectRatioStrategy(
@@ -217,12 +219,17 @@ class CameraController(
             )
             .build()
 
-        val preview = Preview.Builder()
+        val previewBuilder = Preview.Builder()
             .setResolutionSelector(previewResolutionSelector)
             .setDynamicRange(dynamicRange)
-            .build().apply {
-                setSurfaceProvider(surfaceProvider)
-            }
+
+        runCatching {
+            Camera2Interop.Extender(previewBuilder).setCaptureRequestOption(DcgHdrConfig.VENDOR_KEY, targetDcgValue)
+        }
+
+        val preview = previewBuilder.build().apply {
+            setSurfaceProvider(surfaceProvider)
+        }
 
         // 2. Build ImageCapture (M2 High-spec Stills with Sensor Max Resolution & MFNR)
         val resolutionSelector = ResolutionSelector.Builder()
@@ -240,9 +247,14 @@ class CameraController(
             .setResolutionSelector(resolutionSelector)
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && effectiveSettings.ultraHdrEnabled) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val targetFormat = if (effectiveSettings.ultraHdrEnabled) {
+                ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR
+            } else {
+                ImageCapture.OUTPUT_FORMAT_JPEG
+            }
             runCatching {
-                imageCaptureBuilder.setOutputFormat(ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR)
+                imageCaptureBuilder.setOutputFormat(targetFormat)
             }
         }
         val imageCapture = imageCaptureBuilder.build()
@@ -284,8 +296,11 @@ class CameraController(
             }
         }
 
-        // Configure VideoCapture stabilization via Camera2Interop
+        // Configure VideoCapture stabilization & DCG HDR session parameter via Camera2Interop
         Camera2Interop.Extender(videoCaptureBuilder).apply {
+            runCatching {
+                setCaptureRequestOption(DcgHdrConfig.VENDOR_KEY, targetDcgValue)
+            }
             when (effectiveSettings.videoStabilization) {
                 VideoStabilizationMode.STANDARD -> {
                     setCaptureRequestOption(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF)
@@ -579,12 +594,18 @@ class CameraController(
             CaptureRequest.COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY
         )
 
+        // 9. Qualcomm DCG Dual Gain Hardware Session & Request Options
+        val targetDcgValue = DcgHdrConfig.resolveDcgValue(settings.dcgHdrEnabled, _capabilities.value.isDcgSupported)
+        runCatching {
+            optionsBuilder.setCaptureRequestOption(DcgHdrConfig.VENDOR_KEY, targetDcgValue)
+        }
+
         Camera2CameraControl.from(control).setCaptureRequestOptions(optionsBuilder.build())
         glProcessor?.updateSettings(settings)
     }
 
     // =========================================================================
-    // M2: STILL PHOTOGRAPHY PIPELINE
+    // M2: STILL PHOTOGRAPHY PIPELINE (Full Pipeline Ultra HDR)
     // =========================================================================
 
     private val inFlightStillCaptures = java.util.concurrent.atomic.AtomicInteger(0)
@@ -594,7 +615,6 @@ class CameraController(
         if (inFlightStillCaptures.get() >= 5) return
 
         val currentSettings = parameterStore.settings.value
-        val isHeif = currentSettings.photoFormat == PhotoFormat.HEIF
 
         hapticManager.shutterClick()
         inFlightStillCaptures.incrementAndGet()
@@ -604,6 +624,7 @@ class CameraController(
         )
 
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
+        val isHeif = currentSettings.photoFormat == PhotoFormat.HEIF
 
         if (isHeif) {
             val displayName = "IMG_${stamp}.heic"
@@ -618,14 +639,14 @@ class CameraController(
                     override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                         runCatching {
                             val bitmap = BitmapFactory.decodeFile(tempStillFile.absolutePath)
-                                ?: error("解码拍照临时帧失败")
+                                ?: error("解码拍照帧失败")
 
                             val writer = HeifWriter.Builder(
                                 tempHeifFile.absolutePath,
                                 bitmap.width,
                                 bitmap.height,
                                 HeifWriter.INPUT_MODE_BITMAP
-                            ).setQuality(95).setMaxImages(1).build()
+                            ).setQuality(98).setMaxImages(1).build()
 
                             writer.start()
                             writer.addBitmap(bitmap)
@@ -714,7 +735,13 @@ class CameraController(
                         outputFileResults.savedUri?.let { uri ->
                             galleryThumbnailManager.updateWithCapturedUri(uri, false, displayName)
                         }
-                        val notice = if (_recordingStatus.value.isRecording) "录制中拍照已保存至相册 (DCIM/OneShot)" else "照片已保存至相册 (DCIM/OneShot)"
+                        val isUltraHdr = currentSettings.ultraHdrEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+                        val hdrTag = if (isUltraHdr) "Ultra HDR " else ""
+                        val notice = if (_recordingStatus.value.isRecording) {
+                            "录制中${hdrTag}拍照已保存至相册 (DCIM/OneShot)"
+                        } else {
+                            "${hdrTag}照片已保存至相册 (DCIM/OneShot)"
+                        }
                         _recordingStatus.value = _recordingStatus.value.copy(
                             isStillCapturing = remaining > 0,
                             savedUri = outputFileResults.savedUri,
@@ -760,7 +787,11 @@ class CameraController(
             shutterAnimationTick = SystemClock.uptimeMillis()
         )
 
-        val durationSeconds = parameterStore.settings.value.motionDuration.seconds
+        val durationPreset = parameterStore.settings.value.motionDuration
+        val durationSeconds = durationPreset.seconds
+        // Under current shutter-triggered micro-video capture (T0), the still image is aligned strictly at T0 (0 microseconds).
+        // Truth in advertising: we never spoof pre-roll timestamps that the video stream does not actually contain.
+        val presentationTimestampUs = 0L
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val tempJpeg = File(context.cacheDir, "motion_still_${stamp}.jpg")
         val tempMp4 = File(context.cacheDir, "motion_vid_${stamp}.mp4")
@@ -768,12 +799,13 @@ class CameraController(
         scope.launch {
             val jpegDeferred = CompletableDeferred<Boolean>()
             val videoDeferred = CompletableDeferred<Boolean>()
+            val ioExecutor = Dispatchers.IO.asExecutor()
 
-            // 1. Capture still photo to temp file
+            // 1. Capture still photo to temp file on background IO executor
             val jpegOptions = ImageCapture.OutputFileOptions.Builder(tempJpeg).build()
             imageCapture.takePicture(
                 jpegOptions,
-                mainExecutor,
+                ioExecutor,
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                         jpegDeferred.complete(true)
@@ -785,7 +817,7 @@ class CameraController(
                 }
             )
 
-            // 2. Capture micro video snippet to temp file
+            // 2. Capture micro video snippet to temp file on background IO executor
             val videoOptions = FileOutputOptions.Builder(tempMp4).build()
             val pending = videoCapture.output.prepareRecording(context, videoOptions)
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
@@ -793,7 +825,7 @@ class CameraController(
             }
 
             var motionRec: Recording? = null
-            motionRec = pending.start(mainExecutor) { event ->
+            motionRec = pending.start(ioExecutor) { event ->
                 if (event is VideoRecordEvent.Finalize) {
                     videoDeferred.complete(!event.hasError())
                 }
@@ -801,7 +833,7 @@ class CameraController(
 
             // Record for requested duration, then stop
             delay((durationSeconds * 1000).toLong())
-            motionRec.stop()
+            runCatching { motionRec.stop() }
 
             // Await both completion
             val jpegSuccess = jpegDeferred.await()
@@ -813,7 +845,8 @@ class CameraController(
                         context = context,
                         jpegFile = tempJpeg,
                         mp4File = tempMp4,
-                        displayName = "IMG_${stamp}_MOTION.jpg"
+                        displayName = "IMG_${stamp}_MOTION.jpg",
+                        presentationTimestampUs = presentationTimestampUs
                     )
                 }
 

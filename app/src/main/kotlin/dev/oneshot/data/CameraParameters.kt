@@ -35,9 +35,15 @@ enum class VolumeKeyAction(val label: String) {
     NONE("无操作"),
 }
 
-enum class MotionDurationPreset(val label: String, val seconds: Float) {
-    DUR_1_5S("1.5 秒抓拍", 1.5f),
-    DUR_3_0S("3.0 秒完整", 3.0f),
+enum class MotionDurationPreset(
+    val label: String,
+    val seconds: Float,
+    val preRollSeconds: Float,
+    val postRollSeconds: Float,
+) {
+    DUR_1_5S("1.5 秒抓拍", 1.5f, 0.8f, 0.7f),
+    DUR_3_0S("3.0 秒完整", 3.0f, 1.5f, 1.5f),
+    DUR_5_0S("5.0 秒长景", 5.0f, 2.5f, 2.5f),
 }
 
 enum class FpsPreset(val label: String, val targetFps: Int) {
@@ -102,7 +108,7 @@ data class CameraSettings(
     val tintGm: Int = 0, // Green (-100) to Magenta (+100)
     val zoomRatio: Float = 1.0f,
     val ultraHdrEnabled: Boolean = true,
-    val motionDuration: MotionDurationPreset = MotionDurationPreset.DUR_1_5S,
+    val motionDuration: MotionDurationPreset = MotionDurationPreset.DUR_3_0S,
     val volumeKeyUpAction: VolumeKeyAction = VolumeKeyAction.STILL_SHUTTER,
     val volumeKeyDownAction: VolumeKeyAction = VolumeKeyAction.VIDEO_SHUTTER,
     val isAutoShutter: Boolean = true,
