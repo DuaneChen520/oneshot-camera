@@ -37,3 +37,9 @@ OneShot Film 是一款专为摄影与电影创作者打造的 Android 严肃物�
 - **运行环境**：Android 11+ (API 30+)
 - **推荐硬件**：支持 CameraX / Camera2 硬件级别的 Android 旗舰设备（如 Xiaomi 15 等）
 - **编译工具**：Gradle 8.x + JDK 17
+
+---
+
+## 开源协议 (License)
+
+本项目采用 [Apache License 2.0](LICENSE) 开源许可证。

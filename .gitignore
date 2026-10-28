@@ -17,6 +17,8 @@ docs/probe/*.log
 # Release Signing keys & credentials
 keystore.properties
 app/keystore.properties
+*.jks
+*.keystore
 *.private.jks
 
 # Local UI previews and test capture slices
