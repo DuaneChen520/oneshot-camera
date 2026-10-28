@@ -37,6 +37,8 @@ class ParameterStore(private val context: Context) {
                 val aspectName = prefs[KEY_ASPECT] ?: AspectRatioMode.RATIO_4_3.name
                 val drName = prefs[KEY_DR] ?: DynamicRangeMode.HLG10.name
                 val qualityName = prefs[KEY_QUALITY] ?: QualityPreset.FHD.name
+                val stillResName = prefs[KEY_STILL_RESOLUTION] ?: StillResolutionPreset.RES_12MP.name
+                val motionLive = prefs[KEY_MOTION_PHOTO_LIVE] ?: false
                 val lensName = prefs[KEY_LENS] ?: LensFacingMode.BACK.name
                 val dcg = prefs[KEY_DCG] ?: true
                 val ev = prefs[KEY_EV] ?: 0
@@ -92,6 +94,8 @@ class ParameterStore(private val context: Context) {
                     aspectMode = runCatching { AspectRatioMode.valueOf(aspectName) }.getOrDefault(AspectRatioMode.RATIO_4_3),
                     dynamicRange = runCatching { DynamicRangeMode.valueOf(drName) }.getOrDefault(DynamicRangeMode.HLG10),
                     quality = runCatching { QualityPreset.valueOf(qualityName) }.getOrDefault(QualityPreset.FHD),
+                    stillResolution = runCatching { StillResolutionPreset.valueOf(stillResName) }.getOrDefault(StillResolutionPreset.RES_12MP),
+                    motionPhotoLiveEnabled = motionLive,
                     lensFacing = runCatching { LensFacingMode.valueOf(lensName) }.getOrDefault(LensFacingMode.BACK),
                     dcgHdrEnabled = dcg,
                     evIndex = ev,
@@ -141,6 +145,14 @@ class ParameterStore(private val context: Context) {
 
     fun setQuality(preset: QualityPreset) {
         scope.launch { context.dataStore.edit { it[KEY_QUALITY] = preset.name } }
+    }
+
+    fun setStillResolution(preset: StillResolutionPreset) {
+        scope.launch { context.dataStore.edit { it[KEY_STILL_RESOLUTION] = preset.name } }
+    }
+
+    fun setMotionPhotoLive(enabled: Boolean) {
+        scope.launch { context.dataStore.edit { it[KEY_MOTION_PHOTO_LIVE] = enabled } }
     }
 
     fun setLensFacing(facing: LensFacingMode) {
@@ -345,6 +357,8 @@ class ParameterStore(private val context: Context) {
         val KEY_ASPECT = stringPreferencesKey("aspect_mode")
         val KEY_DR = stringPreferencesKey("dynamic_range")
         val KEY_QUALITY = stringPreferencesKey("quality")
+        val KEY_STILL_RESOLUTION = stringPreferencesKey("still_resolution")
+        val KEY_MOTION_PHOTO_LIVE = booleanPreferencesKey("motion_photo_live")
         val KEY_LENS = stringPreferencesKey("lens_facing")
         val KEY_DCG = booleanPreferencesKey("dcg_hdr")
         val KEY_EV = intPreferencesKey("ev_index")

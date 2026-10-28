@@ -65,6 +65,7 @@ object OneShotIcons {
         QSlotItem.FILM_STOCK -> FilmStockLut
         QSlotItem.DCG_HDR -> DcgDualGain
         QSlotItem.PHOTO_FORMAT -> PhotoFormatRaw
+        QSlotItem.STILL_RESOLUTION -> PhotoFormatRaw
         QSlotItem.MOTION_DURATION -> MotionPhotoLive
         QSlotItem.FOCUS_PEAKING -> FocusPeaking
         QSlotItem.ZEBRA_PATTERN -> ZebraStripes

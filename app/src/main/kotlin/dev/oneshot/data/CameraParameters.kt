@@ -14,6 +14,15 @@ enum class DynamicRangeMode(val label: String) {
     HLG10("HLG 10-bit HDR"),
 }
 
+enum class StillResolutionPreset(
+    val label: String,
+    val shortLabel: String,
+    val approxMegaPixels: String,
+) {
+    RES_50MP("50MP 全像素超清", "50MP", "8192×6144"),
+    RES_12MP("12MP 四合一融合", "12MP", "4096×3072"),
+}
+
 enum class QualityPreset(val label: String, val cameraXQuality: Quality?) {
     FHD("1080p", Quality.FHD),
     QHD("2K 超清", Quality.QHD),
@@ -100,6 +109,8 @@ data class CameraSettings(
     val aspectMode: AspectRatioMode = AspectRatioMode.RATIO_4_3,
     val dynamicRange: DynamicRangeMode = DynamicRangeMode.HLG10,
     val quality: QualityPreset = QualityPreset.FHD,
+    val stillResolution: StillResolutionPreset = StillResolutionPreset.RES_12MP,
+    val motionPhotoLiveEnabled: Boolean = false,
     val lensFacing: LensFacingMode = LensFacingMode.BACK,
     val dcgHdrEnabled: Boolean = true,
     val evIndex: Int = 0,

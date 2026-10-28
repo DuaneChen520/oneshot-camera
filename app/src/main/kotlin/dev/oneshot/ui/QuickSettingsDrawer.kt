@@ -66,6 +66,7 @@ import dev.oneshot.data.PhotoFormat
 import dev.oneshot.data.QMenuDefaults
 import dev.oneshot.data.QSlotItem
 import dev.oneshot.data.QualityPreset
+import dev.oneshot.data.StillResolutionPreset
 import dev.oneshot.data.VideoBitrateHelper
 import dev.oneshot.data.VideoCodec
 import dev.oneshot.data.VideoStabilizationMode
@@ -89,6 +90,7 @@ fun QuickSettingsDrawer(
     onClose: () -> Unit,
     onSetAspect: (AspectRatioMode) -> Unit,
     onSetQuality: (QualityPreset) -> Unit,
+    onSetStillResolution: (StillResolutionPreset) -> Unit = {},
     onSetFps: (FpsPreset) -> Unit,
     onSetVideoBitrate: (Int) -> Unit = {},
     onSetVideoCodec: (VideoCodec) -> Unit = {},
@@ -339,6 +341,7 @@ fun QuickSettingsDrawer(
                                     capabilities = capabilities,
                                     onSetAspect = onSetAspect,
                                     onSetQuality = onSetQuality,
+                                    onSetStillResolution = onSetStillResolution,
                                     onSetFps = onSetFps,
                                     onSetVideoCodec = onSetVideoCodec,
                                     onSetPhotoFormat = onSetPhotoFormat,
@@ -911,6 +914,7 @@ private fun FormatOpticsView(
     capabilities: DeviceCapabilities,
     onSetAspect: (AspectRatioMode) -> Unit,
     onSetQuality: (QualityPreset) -> Unit,
+    onSetStillResolution: (StillResolutionPreset) -> Unit = {},
     onSetFps: (FpsPreset) -> Unit,
     onSetVideoCodec: (VideoCodec) -> Unit,
     onSetPhotoFormat: (PhotoFormat) -> Unit,
@@ -960,8 +964,24 @@ private fun FormatOpticsView(
             }
         }
 
-        // 3. Video Resolution Ladder
-        DrawerSectionTitle("视频画质天梯 (Resolution)")
+        // 3. Still Photo Resolution (Decoupled from Video)
+        DrawerSectionTitle("静态拍照分辨率 (Still Resolution · 独立调节)")
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StillResolutionPreset.entries.forEach { res ->
+                DrawerTile(
+                    title = "${res.label} (${res.approxMegaPixels})",
+                    isSelected = settings.stillResolution == res,
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        hapticManager.tick()
+                        onSetStillResolution(res)
+                    }
+                )
+            }
+        }
+
+        // 4. Video Resolution Ladder
+        DrawerSectionTitle("视频画质天梯 (Video Quality · 独立调节)")
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -1432,6 +1452,7 @@ private fun cycleSlot(
     capabilities: DeviceCapabilities,
     onSetAspect: (AspectRatioMode) -> Unit,
     onSetQuality: (QualityPreset) -> Unit,
+    onSetStillResolution: (StillResolutionPreset) -> Unit = {},
     onSetFps: (FpsPreset) -> Unit,
     onSetVideoCodec: (VideoCodec) -> Unit,
     onSetPhotoFormat: (PhotoFormat) -> Unit,
@@ -1499,6 +1520,10 @@ private fun cycleSlot(
             val next = if (settings.photoFormat == PhotoFormat.JPEG) PhotoFormat.HEIF else PhotoFormat.JPEG
             onSetPhotoFormat(next)
         }
+        QSlotItem.STILL_RESOLUTION -> {
+            val next = if (settings.stillResolution == StillResolutionPreset.RES_50MP) StillResolutionPreset.RES_12MP else StillResolutionPreset.RES_50MP
+            onSetStillResolution(next)
+        }
         QSlotItem.MOTION_DURATION -> {
             val list = MotionDurationPreset.entries
             val currentIndex = list.indexOf(settings.motionDuration)
@@ -1563,6 +1588,7 @@ private fun getSlotDisplayValue(
     }
     QSlotItem.DCG_HDR -> if (settings.dcgHdrEnabled) "开启" else "关闭"
     QSlotItem.PHOTO_FORMAT -> if (settings.photoFormat == PhotoFormat.JPEG) "JPEG" else "HEIF"
+    QSlotItem.STILL_RESOLUTION -> settings.stillResolution.shortLabel
     QSlotItem.MOTION_DURATION -> "${settings.motionDuration.seconds}s"
     QSlotItem.FOCUS_PEAKING -> if (settings.focusPeakingEnabled) "开启" else "关闭"
     QSlotItem.ZEBRA_PATTERN -> if (settings.zebraPatternEnabled) "开启" else "关闭"

@@ -62,6 +62,7 @@ import dev.oneshot.data.HistogramMode
 import dev.oneshot.data.LensFacingMode
 import dev.oneshot.data.CustomLut
 import dev.oneshot.data.ParameterStore
+import dev.oneshot.data.StillResolutionPreset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -364,6 +365,11 @@ fun ShootingScreen(
                 parameterStore.setDcgHdr(!settings.dcgHdrEnabled)
                 hapticManager.tick()
             },
+            onToggleMotionPhotoLive = {
+                val next = !settings.motionPhotoLiveEnabled
+                parameterStore.setMotionPhotoLive(next)
+                hapticManager.tick()
+            },
             onOpenQMenu = {
                 isQMenuOpen = true
                 hapticManager.tick()
@@ -436,6 +442,7 @@ fun ShootingScreen(
             onClose = { isQMenuOpen = false },
             onSetAspect = { parameterStore.setAspectRatio(it) },
             onSetQuality = { parameterStore.setQuality(it) },
+            onSetStillResolution = { parameterStore.setStillResolution(it) },
             onSetFps = { parameterStore.setFpsPreset(it) },
             onSetVideoBitrate = { parameterStore.setVideoBitrateMbps(it) },
             onSetVideoCodec = { parameterStore.setVideoCodec(it) },

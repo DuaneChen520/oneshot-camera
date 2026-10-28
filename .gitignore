@@ -23,3 +23,7 @@ app/keystore.properties
 
 # Local UI previews and test capture slices
 preview/
+tools/*.png
+tools/*.jpg
+tools/*.heic
+tools/*.mp4

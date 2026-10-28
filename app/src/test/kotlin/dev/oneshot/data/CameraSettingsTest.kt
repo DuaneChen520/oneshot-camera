@@ -13,6 +13,8 @@ class CameraSettingsTest {
         assertEquals(AspectRatioMode.RATIO_4_3, settings.aspectMode)
         assertEquals(DynamicRangeMode.HLG10, settings.dynamicRange)
         assertEquals(QualityPreset.FHD, settings.quality)
+        assertEquals(StillResolutionPreset.RES_12MP, settings.stillResolution)
+        assertFalse(settings.motionPhotoLiveEnabled)
         assertEquals(LensFacingMode.BACK, settings.lensFacing)
         assertTrue(settings.dcgHdrEnabled)
         assertEquals(0, settings.evIndex)

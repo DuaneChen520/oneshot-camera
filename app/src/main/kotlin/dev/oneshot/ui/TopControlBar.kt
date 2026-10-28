@@ -1,5 +1,6 @@
 package dev.oneshot.ui
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -14,11 +15,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -35,7 +36,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,8 +45,19 @@ import dev.oneshot.data.CameraSettings
 import dev.oneshot.data.DynamicRangeMode
 import dev.oneshot.data.FpsPreset
 import dev.oneshot.data.LutPreset
+import dev.oneshot.ui.theme.CinemaIcon
+import dev.oneshot.ui.theme.OneShotIcons
 import dev.oneshot.ui.theme.OneShotTheme
 
+/**
+ * OneShot Film Industrial Top Control Bar.
+ *
+ * Adheres strictly to BRAND.md cinema optical ergonomics:
+ * - Upper brand header with 35mm physical film canister status badge.
+ * - Lower precision tactical matrix: Exactly 6 fixed-dimension (48dp x 36dp) industrial cells.
+ * - Eliminates layout jitter and dynamic text resizing. Uses sharp cinema vector iconography
+ *   and hardware status diodes (Amber / Green).
+ */
 @Composable
 fun TopControlBar(
     settings: CameraSettings,
@@ -55,6 +66,7 @@ fun TopControlBar(
     onToggleDynamicRange: () -> Unit,
     onToggleFps: () -> Unit,
     onToggleDcg: () -> Unit,
+    onToggleMotionPhotoLive: () -> Unit,
     onOpenQMenu: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -64,16 +76,16 @@ fun TopControlBar(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        OneShotTheme.ObsidianBlack.copy(alpha = 0.95f),
-                        OneShotTheme.ObsidianBlack.copy(alpha = 0.70f),
+                        OneShotTheme.ObsidianBlack.copy(alpha = 0.96f),
+                        OneShotTheme.ObsidianBlack.copy(alpha = 0.75f),
                         Color.Transparent
                     )
                 )
             )
             .statusBarsPadding()
             .displayCutoutPadding()
-            // 物理安全出血区：水平内缩 18dp 避开屏幕顶角圆弧，且自然避让居中前置摄像头挖孔
-            .padding(horizontal = 18.dp, vertical = 6.dp)
+            // 物理安全出血区：水平内缩 16dp 避开屏幕顶角圆弧，且自然避让居中前置摄像头挖孔
+            .padding(horizontal = 16.dp, vertical = 6.dp)
     ) {
         // 1. Upper Brand Header & Loaded Film Roll Indicator (BRAND.md 规范)
         Row(
@@ -180,133 +192,177 @@ fun TopControlBar(
             }
         }
 
-        Spacer(modifier = Modifier.height(7.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // 2. Precision Camera Control Quick Pills
+        // 2. Uniform 6-Slot Industrial Tactile Matrix (Fixed 48dp x 36dp per Cell)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 1. Aspect Ratio Pill (4:3 Open Gate vs 16:9 Scope)
-            TactilePillButton(
-                text = if (settings.aspectMode == AspectRatioMode.RATIO_4_3) "4:3 OPEN" else "16:9 SCOPE",
+            // 1. Aspect Ratio Cell (4:3 Open Gate vs 16:9 Scope)
+            TactileIconCell(
+                iconRes = OneShotIcons.AspectRatioOpenGate,
+                label = if (settings.aspectMode == AspectRatioMode.RATIO_4_3) "4:3" else "16:9",
                 active = settings.aspectMode == AspectRatioMode.RATIO_4_3,
                 activeColor = OneShotTheme.AmberGrain,
-                showDiode = true,
+                showDiode = settings.aspectMode == AspectRatioMode.RATIO_4_3,
                 onClick = onToggleAspect
             )
 
-            // 2. Dynamic Range Pill (HLG 10-bit vs SDR)
-            TactilePillButton(
-                text = if (settings.dynamicRange == DynamicRangeMode.HLG10) "10-bit HLG" else "SDR",
+            // 2. Dynamic Range Cell (HLG 10-bit vs SDR)
+            TactileIconCell(
+                iconRes = OneShotIcons.DynamicRangeHlg,
+                label = if (settings.dynamicRange == DynamicRangeMode.HLG10) "10-bit" else "SDR",
                 active = settings.dynamicRange == DynamicRangeMode.HLG10,
                 activeColor = OneShotTheme.AmberGrain,
                 showDiode = settings.dynamicRange == DynamicRangeMode.HLG10,
                 onClick = if (capabilities.isHlg10Supported) onToggleDynamicRange else { {} }
             )
 
-            // 3. FPS Toggle Pill (cycles through hardware supported presets)
-            TactilePillButton(
-                text = "${settings.fpsPreset.targetFps} FPS",
+            // 3. FPS Shutter Angle Cell (24 / 30 / 60 / 120)
+            TactileIconCell(
+                iconRes = OneShotIcons.FpsShutterAngle,
+                label = "${settings.fpsPreset.targetFps}",
                 active = settings.fpsPreset == FpsPreset.FPS_24,
                 activeColor = if (settings.fpsPreset == FpsPreset.FPS_24) OneShotTheme.AmberGrain else OneShotTheme.FilmSilver,
                 showDiode = false,
                 onClick = onToggleFps
             )
 
-            // 4. DCG Hardware HDR Pill (Smoothly hidden if device lacks Qualcomm DCG tag 0x8003)
-            if (capabilities.isDcgSupported) {
-                TactilePillButton(
-                    text = "DCG HDR",
-                    active = settings.dcgHdrEnabled,
-                    activeColor = OneShotTheme.HardwareGreen,
-                    showDiode = settings.dcgHdrEnabled,
-                    onClick = onToggleDcg
-                )
-            }
+            // 4. DCG Hardware HDR Cell
+            TactileIconCell(
+                iconRes = OneShotIcons.DcgDualGain,
+                label = "DCG",
+                active = settings.dcgHdrEnabled && capabilities.isDcgSupported,
+                activeColor = OneShotTheme.HardwareGreen,
+                showDiode = settings.dcgHdrEnabled && capabilities.isDcgSupported,
+                onClick = if (capabilities.isDcgSupported) onToggleDcg else { {} }
+            )
 
-            // 5. Q-Menu Pill (Sliding Quick Settings Drawer)
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(7.dp))
-                    .background(OneShotTheme.AmberGrainMuted)
-                    .border(
-                        width = 0.75.dp,
-                        color = OneShotTheme.AmberGrain.copy(alpha = 0.65f),
-                        shape = RoundedCornerShape(7.dp)
-                    )
-                    .clickable(onClick = onOpenQMenu)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    Text(
-                        text = "Q 设定",
-                        fontSize = 10.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = OneShotTheme.MonospaceFont,
-                        color = OneShotTheme.AmberGrain
-                    )
-                    Text(
-                        text = "▾",
-                        fontSize = 9.sp,
-                        color = OneShotTheme.AmberGrain
-                    )
-                }
-            }
+            // 5. Motion Photo LIVE Pre-Roll Buffer Cell
+            val isLiveActive = settings.motionPhotoLiveEnabled
+            val liveTransition = rememberInfiniteTransition(label = "liveDiodePulse")
+            val livePulse by liveTransition.animateFloat(
+                initialValue = 0.8f,
+                targetValue = 1.25f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(800),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "livePulse"
+            )
+
+            TactileIconCell(
+                iconRes = OneShotIcons.MotionPhotoLive,
+                label = "LIVE",
+                active = isLiveActive,
+                activeColor = OneShotTheme.AmberGrain,
+                showDiode = isLiveActive,
+                diodeScale = if (isLiveActive) livePulse else 1.0f,
+                onClick = onToggleMotionPhotoLive
+            )
+
+            // 6. Q-Menu Matrix Cell (Sliding Quick Settings Drawer)
+            TactileIconCell(
+                iconRes = OneShotIcons.QMenuMatrix,
+                label = "Q",
+                active = true,
+                activeColor = OneShotTheme.AmberGrain,
+                showDiode = false,
+                isSpecialQ = true,
+                onClick = onOpenQMenu
+            )
         }
     }
 }
 
+/**
+ * Fixed-dimension Industrial Tactile Button Cell (48dp x 36dp).
+ *
+ * Guarantees zero layout shifts regardless of state changes.
+ */
 @Composable
-fun TactilePillButton(
-    text: String,
+private fun TactileIconCell(
+    @DrawableRes iconRes: Int,
+    label: String,
     active: Boolean,
     activeColor: Color,
     showDiode: Boolean = false,
+    diodeScale: Float = 1.0f,
+    isSpecialQ: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val borderColor = when {
+        isSpecialQ -> OneShotTheme.AmberGrain.copy(alpha = 0.75f)
+        active -> activeColor.copy(alpha = 0.75f)
+        else -> OneShotTheme.ChassisBorder
+    }
+
+    val backgroundColor = when {
+        isSpecialQ -> OneShotTheme.AmberGrainMuted.copy(alpha = 0.55f)
+        active -> OneShotTheme.ChassisMilled.copy(alpha = 0.95f)
+        else -> OneShotTheme.ChassisDark.copy(alpha = 0.80f)
+    }
+
+    val contentColor = when {
+        isSpecialQ -> OneShotTheme.AmberGrain
+        active -> activeColor
+        else -> OneShotTheme.TitaniumGray
+    }
+
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(7.dp))
-            .background(
-                if (active) OneShotTheme.ChassisMilled.copy(alpha = 0.9f)
-                else OneShotTheme.ChassisDark.copy(alpha = 0.75f)
-            )
+            .size(width = 48.dp, height = 36.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(backgroundColor)
             .border(
-                width = if (active) 0.85.dp else 0.5.dp,
-                color = if (active) activeColor.copy(alpha = 0.7f) else OneShotTheme.ChassisBorder,
-                shape = RoundedCornerShape(7.dp)
+                width = if (active || isSpecialQ) 0.85.dp else 0.5.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(8.dp)
             )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 7.dp, vertical = 4.dp),
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
         ) {
-            if (showDiode && active) {
-                Box(
-                    modifier = Modifier
-                        .size(4.dp)
-                        .clip(CircleShape)
-                        .background(activeColor)
-                )
-            }
+            // High-precision Cinema Vector Icon
+            CinemaIcon(
+                resId = iconRes,
+                contentDescription = label,
+                tint = contentColor,
+                size = 14.dp
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            // Precision Compact Monospace Tag
             Text(
-                text = text,
-                fontSize = 10.sp,
-                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                text = label,
+                fontSize = 8.5.sp,
+                fontWeight = if (active) FontWeight.Black else FontWeight.Medium,
                 fontFamily = OneShotTheme.MonospaceFont,
-                color = if (active) activeColor else OneShotTheme.TitaniumLight
+                color = contentColor,
+                maxLines = 1
+            )
+        }
+
+        // Hardware Diode Indicator at top right
+        if (showDiode && active) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 4.dp, end = 4.dp)
+                    .size(4.dp)
+                    .scale(diodeScale)
+                    .clip(CircleShape)
+                    .background(activeColor)
+                    .border(0.5.dp, activeColor.copy(alpha = 0.8f), CircleShape)
             )
         }
     }
 }
-

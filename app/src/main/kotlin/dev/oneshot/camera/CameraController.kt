@@ -63,6 +63,7 @@ import dev.oneshot.data.DynamicRangeMode
 import dev.oneshot.data.LensFacingMode
 import dev.oneshot.data.ParameterStore
 import dev.oneshot.data.QualityPreset
+import dev.oneshot.data.StillResolutionPreset
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -168,9 +169,33 @@ class CameraController(
 
     private var lastBoundSettings: CameraSettings? = null
 
+    private val preRollEngine = MotionPhotoPreRollEngine(
+        context = context,
+        scope = scope,
+        onStillSavedForThumbnail = { uri, name ->
+            galleryThumbnailManager.updateWithCapturedUri(uri, false, name)
+        },
+        onMotionPhotoComplete = { uri, notice ->
+            _recordingStatus.value = _recordingStatus.value.copy(
+                isMotionCapturing = false,
+                savedUri = uri,
+                lastMediaType = CapturedMediaType.PHOTO,
+                userNotice = notice,
+                lastError = null,
+            )
+        },
+        onError = { msg ->
+            _recordingStatus.value = _recordingStatus.value.copy(
+                isMotionCapturing = false,
+                lastError = msg,
+            )
+        }
+    )
+
     init {
         scope.launch {
             parameterStore.settings.collectLatest { settings ->
+                preRollEngine.setLiveEnabled(settings.motionPhotoLiveEnabled && !_recordingStatus.value.isRecording)
                 if (activeLifecycleOwner != null && activeSurfaceProvider != null) {
                     val prev = lastBoundSettings
                     // Only react to changes AFTER initial binding has completed (prev != null).
@@ -180,6 +205,7 @@ class CameraController(
                         prev.aspectMode != settings.aspectMode ||
                         prev.dynamicRange != settings.dynamicRange ||
                         prev.quality != settings.quality ||
+                        prev.stillResolution != settings.stillResolution ||
                         prev.videoBitrateMbps != settings.videoBitrateMbps ||
                         prev.videoCodec != settings.videoCodec ||
                         prev.dcgHdrEnabled != settings.dcgHdrEnabled ||
@@ -273,16 +299,42 @@ class CameraController(
         }
 
         // 2. Build ImageCapture (M2 High-spec Stills with Sensor Max Resolution & MFNR)
-        val resolutionSelector = ResolutionSelector.Builder()
-            .setAllowedResolutionMode(ResolutionSelector.PREFER_HIGHER_RESOLUTION_OVER_CAPTURE_RATE)
-            .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
-            .setAspectRatioStrategy(
-                AspectRatioStrategy(
-                    effectiveSettings.aspectMode.cameraXRatio,
-                    AspectRatioStrategy.FALLBACK_RULE_AUTO
-                )
-            )
-            .build()
+        val resolutionSelector = when (effectiveSettings.stillResolution) {
+            StillResolutionPreset.RES_50MP -> {
+                ResolutionSelector.Builder()
+                    .setAllowedResolutionMode(ResolutionSelector.PREFER_HIGHER_RESOLUTION_OVER_CAPTURE_RATE)
+                    .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
+                    .setAspectRatioStrategy(
+                        AspectRatioStrategy(
+                            effectiveSettings.aspectMode.cameraXRatio,
+                            AspectRatioStrategy.FALLBACK_RULE_AUTO
+                        )
+                    )
+                    .build()
+            }
+            StillResolutionPreset.RES_12MP -> {
+                val targetSize = if (effectiveSettings.aspectMode == AspectRatioMode.RATIO_4_3) {
+                    Size(4096, 3072)
+                } else {
+                    Size(3840, 2160)
+                }
+                ResolutionSelector.Builder()
+                    .setAllowedResolutionMode(ResolutionSelector.PREFER_CAPTURE_RATE_OVER_HIGHER_RESOLUTION)
+                    .setResolutionStrategy(
+                        ResolutionStrategy(
+                            targetSize,
+                            ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                        )
+                    )
+                    .setAspectRatioStrategy(
+                        AspectRatioStrategy(
+                            effectiveSettings.aspectMode.cameraXRatio,
+                            AspectRatioStrategy.FALLBACK_RULE_AUTO
+                        )
+                    )
+                    .build()
+            }
+        }
 
         val imageCaptureBuilder = ImageCapture.Builder()
             .setResolutionSelector(resolutionSelector)
@@ -440,6 +492,8 @@ class CameraController(
             }
         }
         lastBoundSettings = settings
+        preRollEngine.updateUseCases(activeVideoCapture, activeImageCapture)
+        preRollEngine.setLiveEnabled(settings.motionPhotoLiveEnabled && !_recordingStatus.value.isRecording)
     }
 
     private fun updateCameraCapabilities(camera: Camera) {
@@ -900,12 +954,17 @@ class CameraController(
         )
 
         val durationPreset = parameterStore.settings.value.motionDuration
-        val durationSeconds = durationPreset.seconds
-        // Under current shutter-triggered micro-video capture (T0), the still image is aligned strictly at T0 (0 microseconds).
-        // Truth in advertising: we never spoof pre-roll timestamps that the video stream does not actually contain.
-        val presentationTimestampUs = 0L
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val tempJpeg = File(context.cacheDir, "motion_still_${stamp}.jpg")
+
+        // SPEC-003: If Pre-Roll engine is armed and rolling, delegate directly to capture pre-roll frames
+        if (preRollEngine.captureLivePhoto(durationPreset, stamp, tempJpeg)) {
+            return
+        }
+
+        val durationSeconds = durationPreset.seconds
+        // Fallback: shutter-triggered micro-video capture without pre-roll
+        val presentationTimestampUs = 0L
         val tempMp4 = File(context.cacheDir, "motion_vid_${stamp}.mp4")
 
         scope.launch {
@@ -973,7 +1032,7 @@ class CameraController(
                         isMotionCapturing = false,
                         savedUri = motionUri,
                         lastMediaType = CapturedMediaType.MOTION_PHOTO,
-                        userNotice = "动态照片已保存至相册 (DCIM/OneShot)",
+                        userNotice = "动态照片已保存。开启顶部 LIVE 可录制按键前 1.5 秒预摄画面",
                         lastError = null,
                     )
                 } else {
@@ -1021,6 +1080,7 @@ class CameraController(
         // Two-stage haptic: Stage 1 button press
         hapticManager.recordButtonPress()
         RecordingForegroundService.start(context)
+        preRollEngine.stopRolling()
 
         val pendingRecording = videoCapture.output.prepareRecording(context, outputOptions)
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
@@ -1063,6 +1123,9 @@ class CameraController(
                             lastError = error,
                             userNotice = if (!event.hasError()) "视频已保存至相册 (DCIM/OneShot)" else null,
                         )
+                        if (parameterStore.settings.value.motionPhotoLiveEnabled) {
+                            preRollEngine.setLiveEnabled(true)
+                        }
                     }
                     is VideoRecordEvent.Pause -> {
                         _recordingStatus.value = _recordingStatus.value.copy(isPaused = true)
