@@ -7,7 +7,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 /**
- * Tests for pipeline-isolated parameter generation.
+ * Tests for pipeline-isolated parameter generation using typed domain configurations.
  *
  * Verifies the critical invariant: still capture parameters and video capture
  * parameters are fully decoupled — no FPS lock leaks into the still pipeline,
@@ -21,67 +21,33 @@ class PipelineParamsTest {
     // =========================================================================
 
     @Test
-    fun stillParams_alwaysContainsEdgeModeHighQuality() {
-        val params = StillCaptureParams.build(CameraSettings())
-        assertEquals(
-            StillCaptureParams.EDGE_MODE_HIGH_QUALITY,
-            params[StillCaptureParams.KEY_EDGE_MODE]
-        )
+    fun stillConfig_containsEdgeModeHighQuality() {
+        val config = StillCaptureParams.build(CameraSettings())
+        assertEquals(StillCaptureParams.EDGE_MODE_HIGH_QUALITY, config.edgeMode)
     }
 
     @Test
-    fun stillParams_alwaysContainsNoiseReductionHighQuality() {
-        val params = StillCaptureParams.build(CameraSettings())
-        assertEquals(
-            StillCaptureParams.NOISE_REDUCTION_MODE_HIGH_QUALITY,
-            params[StillCaptureParams.KEY_NOISE_REDUCTION_MODE]
-        )
+    fun stillConfig_containsNoiseReductionHighQuality() {
+        val config = StillCaptureParams.build(CameraSettings())
+        assertEquals(StillCaptureParams.NOISE_REDUCTION_MODE_HIGH_QUALITY, config.noiseReductionMode)
     }
 
     @Test
-    fun stillParams_alwaysContainsAberrationCorrectionHighQuality() {
-        val params = StillCaptureParams.build(CameraSettings())
-        assertEquals(
-            StillCaptureParams.COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY,
-            params[StillCaptureParams.KEY_COLOR_CORRECTION_ABERRATION_MODE]
-        )
+    fun stillConfig_containsAberrationCorrectionHighQuality() {
+        val config = StillCaptureParams.build(CameraSettings())
+        assertEquals(StillCaptureParams.COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY, config.aberrationMode)
     }
 
     @Test
-    fun stillParams_alwaysContainsShadingHighQuality() {
-        val params = StillCaptureParams.build(CameraSettings())
-        assertEquals(
-            StillCaptureParams.SHADING_MODE_HIGH_QUALITY,
-            params[StillCaptureParams.KEY_SHADING_MODE]
-        )
+    fun stillConfig_containsShadingHighQuality() {
+        val config = StillCaptureParams.build(CameraSettings())
+        assertEquals(StillCaptureParams.SHADING_MODE_HIGH_QUALITY, config.shadingMode)
     }
 
     @Test
-    fun stillParams_jpegQualityIs100() {
-        val params = StillCaptureParams.build(CameraSettings())
-        assertEquals(100.toByte(), params[StillCaptureParams.KEY_JPEG_QUALITY])
-    }
-
-    @Test
-    fun stillParams_neverContainsFpsRangeLock() {
-        // The FPS range must NEVER appear in still capture params.
-        // This was the root cause of the 1/33s motion blur bug.
-        val params = StillCaptureParams.build(CameraSettings())
-        assertFalse(
-            "FPS range lock MUST NOT appear in still capture params",
-            params.containsKey(StillCaptureParams.KEY_AE_TARGET_FPS_RANGE)
-        )
-    }
-
-    @Test
-    fun stillParams_neverContainsFpsRangeLock_regardless_of_fpsPreset() {
-        for (preset in FpsPreset.values()) {
-            val params = StillCaptureParams.build(CameraSettings(fpsPreset = preset))
-            assertFalse(
-                "FPS range lock MUST NOT appear in still capture params for preset $preset",
-                params.containsKey(StillCaptureParams.KEY_AE_TARGET_FPS_RANGE)
-            )
-        }
+    fun stillConfig_jpegQualityIs100() {
+        val config = StillCaptureParams.build(CameraSettings())
+        assertEquals(100.toByte(), config.jpegQuality)
     }
 
     // =========================================================================
@@ -90,112 +56,50 @@ class PipelineParamsTest {
     // =========================================================================
 
     @Test
-    fun videoParams_containsFpsRangeLock_30fps() {
-        val params = VideoCaptureParams.build(CameraSettings(fpsPreset = FpsPreset.FPS_30))
-        val range = params[VideoCaptureParams.KEY_AE_TARGET_FPS_RANGE]
-        assertNotNull("Video params must contain FPS range", range)
-        val fpsRange = range as FpsRange
-        assertEquals(30, fpsRange.lower)
-        assertEquals(30, fpsRange.upper)
+    fun videoConfig_containsFpsRangeLock_30fps() {
+        val config = VideoCaptureParams.build(CameraSettings(fpsPreset = FpsPreset.FPS_30))
+        assertEquals(30, config.fpsRange.lower)
+        assertEquals(30, config.fpsRange.upper)
     }
 
     @Test
-    fun videoParams_containsFpsRangeLock_60fps() {
-        val params = VideoCaptureParams.build(CameraSettings(fpsPreset = FpsPreset.FPS_60))
-        val range = params[VideoCaptureParams.KEY_AE_TARGET_FPS_RANGE]
-        assertNotNull("Video params must contain FPS range", range)
-        val fpsRange = range as FpsRange
-        assertEquals(60, fpsRange.lower)
-        assertEquals(60, fpsRange.upper)
+    fun videoConfig_containsFpsRangeLock_60fps() {
+        val config = VideoCaptureParams.build(CameraSettings(fpsPreset = FpsPreset.FPS_60))
+        assertEquals(60, config.fpsRange.lower)
+        assertEquals(60, config.fpsRange.upper)
     }
 
     @Test
-    fun videoParams_neverContainsEdgeModeHighQuality() {
-        val params = VideoCaptureParams.build(CameraSettings())
-        assertFalse(
-            "Video must not contain edge mode key (uses HAL default FAST)",
-            params.containsKey(StillCaptureParams.KEY_EDGE_MODE)
-        )
+    fun videoConfig_containsFpsRangeLock_120fps() {
+        val config = VideoCaptureParams.build(CameraSettings(fpsPreset = FpsPreset.FPS_120))
+        assertEquals(120, config.fpsRange.lower)
+        assertEquals(120, config.fpsRange.upper)
     }
 
     @Test
-    fun videoParams_neverContainsNoiseReductionHighQuality() {
-        val params = VideoCaptureParams.build(CameraSettings())
-        assertFalse(
-            "Video must not contain noise reduction key",
-            params.containsKey(StillCaptureParams.KEY_NOISE_REDUCTION_MODE)
-        )
-    }
-
-    @Test
-    fun videoParams_neverContainsJpegQuality() {
-        val params = VideoCaptureParams.build(CameraSettings())
-        assertFalse(
-            "Video must not contain JPEG quality",
-            params.containsKey(StillCaptureParams.KEY_JPEG_QUALITY)
-        )
-    }
-
-    @Test
-    fun videoParams_containsStabilizationSettings_standard() {
-        val params = VideoCaptureParams.build(
+    fun videoConfig_containsStabilizationSettings_standard() {
+        val config = VideoCaptureParams.build(
             CameraSettings(videoStabilization = VideoStabilizationMode.STANDARD)
         )
-        assertEquals(
-            VideoCaptureParams.VIDEO_STABILIZATION_MODE_OFF,
-            params[VideoCaptureParams.KEY_VIDEO_STABILIZATION_MODE]
-        )
-        assertEquals(
-            VideoCaptureParams.OIS_MODE_ON,
-            params[VideoCaptureParams.KEY_LENS_OIS_MODE]
-        )
+        assertEquals(VideoCaptureParams.VIDEO_STABILIZATION_MODE_OFF, config.videoStabilizationMode)
+        assertEquals(VideoCaptureParams.OIS_MODE_ON, config.oisMode)
     }
 
     @Test
-    fun videoParams_containsStabilizationSettings_enhanced() {
-        val params = VideoCaptureParams.build(
+    fun videoConfig_containsStabilizationSettings_enhanced() {
+        val config = VideoCaptureParams.build(
             CameraSettings(videoStabilization = VideoStabilizationMode.ENHANCED)
         )
-        assertEquals(
-            VideoCaptureParams.VIDEO_STABILIZATION_MODE_ON,
-            params[VideoCaptureParams.KEY_VIDEO_STABILIZATION_MODE]
-        )
-        assertEquals(
-            VideoCaptureParams.OIS_MODE_ON,
-            params[VideoCaptureParams.KEY_LENS_OIS_MODE]
-        )
+        assertEquals(VideoCaptureParams.VIDEO_STABILIZATION_MODE_ON, config.videoStabilizationMode)
+        assertEquals(VideoCaptureParams.OIS_MODE_ON, config.oisMode)
     }
 
     @Test
-    fun videoParams_containsStabilizationSettings_off() {
-        val params = VideoCaptureParams.build(
+    fun videoConfig_containsStabilizationSettings_off() {
+        val config = VideoCaptureParams.build(
             CameraSettings(videoStabilization = VideoStabilizationMode.OFF)
         )
-        assertEquals(
-            VideoCaptureParams.VIDEO_STABILIZATION_MODE_OFF,
-            params[VideoCaptureParams.KEY_VIDEO_STABILIZATION_MODE]
-        )
-        assertEquals(
-            VideoCaptureParams.OIS_MODE_OFF,
-            params[VideoCaptureParams.KEY_LENS_OIS_MODE]
-        )
-    }
-
-    // =========================================================================
-    // Cross-pipeline isolation invariant
-    // =========================================================================
-
-    @Test
-    fun stillAndVideo_noSharedMutableKeys() {
-        val still = StillCaptureParams.build(CameraSettings())
-        val video = VideoCaptureParams.build(CameraSettings())
-
-        // FPS range must only be in video, never in still
-        assertFalse(still.containsKey(StillCaptureParams.KEY_AE_TARGET_FPS_RANGE))
-        assertTrue(video.containsKey(VideoCaptureParams.KEY_AE_TARGET_FPS_RANGE))
-
-        // JPEG quality must only be in still, never in video
-        assertTrue(still.containsKey(StillCaptureParams.KEY_JPEG_QUALITY))
-        assertFalse(video.containsKey(StillCaptureParams.KEY_JPEG_QUALITY))
+        assertEquals(VideoCaptureParams.VIDEO_STABILIZATION_MODE_OFF, config.videoStabilizationMode)
+        assertEquals(VideoCaptureParams.OIS_MODE_OFF, config.oisMode)
     }
 }

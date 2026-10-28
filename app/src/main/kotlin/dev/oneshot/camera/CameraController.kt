@@ -34,6 +34,7 @@ import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.MeteringPointFactory
+import androidx.camera.core.SurfaceOrientedMeteringPointFactory
 import androidx.camera.core.Preview
 import androidx.camera.core.SessionConfig
 import androidx.camera.core.UseCase
@@ -148,6 +149,7 @@ class CameraController(
                         prev.videoCodec != settings.videoCodec ||
                         prev.dcgHdrEnabled != settings.dcgHdrEnabled ||
                         prev.ultraHdrEnabled != settings.ultraHdrEnabled ||
+                        prev.fpsPreset != settings.fpsPreset ||
                         prev.videoStabilization != settings.videoStabilization ||
                         prev.lutBurnIn != settings.lutBurnIn
                     )
@@ -262,18 +264,13 @@ class CameraController(
         // These must NOT be set session-wide (which would burden the video encoder).
         // This ensures the single-shot capture request demands full edge sharpening,
         // advanced denoising, chromatic aberration correction, and max JPEG quality.
-        val stillParams = StillCaptureParams.build(effectiveSettings)
+        val stillConfig = StillCaptureParams.build(effectiveSettings)
         Camera2Interop.Extender(imageCaptureBuilder).apply {
-            setCaptureRequestOption(CaptureRequest.EDGE_MODE,
-                stillParams[StillCaptureParams.KEY_EDGE_MODE] as Int)
-            setCaptureRequestOption(CaptureRequest.NOISE_REDUCTION_MODE,
-                stillParams[StillCaptureParams.KEY_NOISE_REDUCTION_MODE] as Int)
-            setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_ABERRATION_MODE,
-                stillParams[StillCaptureParams.KEY_COLOR_CORRECTION_ABERRATION_MODE] as Int)
-            setCaptureRequestOption(CaptureRequest.SHADING_MODE,
-                stillParams[StillCaptureParams.KEY_SHADING_MODE] as Int)
-            setCaptureRequestOption(CaptureRequest.JPEG_QUALITY,
-                stillParams[StillCaptureParams.KEY_JPEG_QUALITY] as Byte)
+            setCaptureRequestOption(CaptureRequest.EDGE_MODE, stillConfig.edgeMode)
+            setCaptureRequestOption(CaptureRequest.NOISE_REDUCTION_MODE, stillConfig.noiseReductionMode)
+            setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_ABERRATION_MODE, stillConfig.aberrationMode)
+            setCaptureRequestOption(CaptureRequest.SHADING_MODE, stillConfig.shadingMode)
+            setCaptureRequestOption(CaptureRequest.JPEG_QUALITY, stillConfig.jpegQuality)
         }
 
         val imageCapture = imageCaptureBuilder.build()
@@ -318,20 +315,25 @@ class CameraController(
         // Configure VideoCapture FPS lock, stabilization & DCG HDR session parameter via Camera2Interop.
         // FPS range lock is applied EXCLUSIVELY to the video pipeline, never to the shared session,
         // ensuring the still capture AE engine remains free to select high-speed shutter speeds.
-        val videoParams = VideoCaptureParams.build(effectiveSettings)
+        val videoConfig = VideoCaptureParams.build(effectiveSettings)
         Camera2Interop.Extender(videoCaptureBuilder).apply {
             runCatching {
                 setCaptureRequestOption(DcgHdrConfig.VENDOR_KEY, targetDcgValue)
             }
             // FPS lock — exclusively for video encoder stability
-            val fpsRange = videoParams[VideoCaptureParams.KEY_AE_TARGET_FPS_RANGE] as FpsRange
-            setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
-                Range(fpsRange.lower, fpsRange.upper))
+            setCaptureRequestOption(
+                CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
+                Range(videoConfig.fpsRange.lower, videoConfig.fpsRange.upper)
+            )
             // Video stabilization
-            setCaptureRequestOption(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
-                videoParams[VideoCaptureParams.KEY_VIDEO_STABILIZATION_MODE] as Int)
-            setCaptureRequestOption(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
-                videoParams[VideoCaptureParams.KEY_LENS_OIS_MODE] as Int)
+            setCaptureRequestOption(
+                CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+                videoConfig.videoStabilizationMode
+            )
+            setCaptureRequestOption(
+                CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
+                videoConfig.oisMode
+            )
         }
 
         val videoCapture = videoCaptureBuilder.build()
@@ -562,11 +564,41 @@ class CameraController(
             )
         }
 
-        // NOTE: Video stabilization (OIS & EIS) is intentionally NOT set here.
-        // It is injected exclusively into the VideoCapture builder via Camera2Interop.Extender
-        // in rebindCamera(), as part of the pipeline isolation architecture (SPEC-002).
+        // 7. Video Stabilization Mode (OIS & EIS) for preview
+        when (settings.videoStabilization) {
+            VideoStabilizationMode.STANDARD -> {
+                optionsBuilder.setCaptureRequestOption(
+                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF
+                )
+                optionsBuilder.setCaptureRequestOption(
+                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
+                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON
+                )
+            }
+            VideoStabilizationMode.ENHANCED -> {
+                optionsBuilder.setCaptureRequestOption(
+                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON
+                )
+                optionsBuilder.setCaptureRequestOption(
+                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
+                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON
+                )
+            }
+            VideoStabilizationMode.OFF -> {
+                optionsBuilder.setCaptureRequestOption(
+                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF
+                )
+                optionsBuilder.setCaptureRequestOption(
+                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
+                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_OFF
+                )
+            }
+        }
 
-        // 7. Hardware Image Quality & Clarity Tuning (for preview/viewfinder repeating request)
+        // 8. Hardware Image Quality & Clarity Tuning (for preview/viewfinder repeating request)
         optionsBuilder.setCaptureRequestOption(
             CaptureRequest.EDGE_MODE,
             CaptureRequest.EDGE_MODE_HIGH_QUALITY
@@ -579,8 +611,12 @@ class CameraController(
             CaptureRequest.COLOR_CORRECTION_ABERRATION_MODE,
             CaptureRequest.COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY
         )
+        optionsBuilder.setCaptureRequestOption(
+            CaptureRequest.SHADING_MODE,
+            CaptureRequest.SHADING_MODE_HIGH_QUALITY
+        )
 
-        // 8. Qualcomm DCG Dual Gain Hardware Session & Request Options
+        // 9. Qualcomm DCG Dual Gain Hardware Session & Request Options
         val targetDcgValue = DcgHdrConfig.resolveDcgValue(settings.dcgHdrEnabled, _capabilities.value.isDcgSupported)
         runCatching {
             optionsBuilder.setCaptureRequestOption(DcgHdrConfig.VENDOR_KEY, targetDcgValue)
@@ -609,84 +645,136 @@ class CameraController(
             shutterAnimationTick = SystemClock.uptimeMillis()
         )
 
-        val stamp = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
-        val isHeif = currentSettings.photoFormat == PhotoFormat.HEIF
+        val executeCapture = {
+            val stamp = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
+            val isHeif = currentSettings.photoFormat == PhotoFormat.HEIF
 
-        if (isHeif) {
-            val displayName = "IMG_${stamp}.heic"
-            val tempStillFile = File(context.cacheDir, "temp_still_${stamp}.jpg")
-            val tempHeifFile = File(context.cacheDir, "temp_heif_${stamp}.heic")
-            val tempOptions = ImageCapture.OutputFileOptions.Builder(tempStillFile).build()
+            if (isHeif) {
+                val displayName = "IMG_${stamp}.heic"
+                val tempStillFile = File(context.cacheDir, "temp_still_${stamp}.jpg")
+                val tempHeifFile = File(context.cacheDir, "temp_heif_${stamp}.heic")
+                val tempOptions = ImageCapture.OutputFileOptions.Builder(tempStillFile).build()
 
-            imageCapture.takePicture(
-                tempOptions,
-                Dispatchers.IO.asExecutor(),
-                object : ImageCapture.OnImageSavedCallback {
-                    override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                        runCatching {
-                            val bitmap = BitmapFactory.decodeFile(tempStillFile.absolutePath)
-                                ?: error("解码拍照帧失败")
+                imageCapture.takePicture(
+                    tempOptions,
+                    Dispatchers.IO.asExecutor(),
+                    object : ImageCapture.OnImageSavedCallback {
+                        override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                            runCatching {
+                                val bitmap = BitmapFactory.decodeFile(tempStillFile.absolutePath)
+                                    ?: error("解码拍照帧失败")
 
-                            val writer = HeifWriter.Builder(
-                                tempHeifFile.absolutePath,
-                                bitmap.width,
-                                bitmap.height,
-                                HeifWriter.INPUT_MODE_BITMAP
-                            ).setQuality(98).setMaxImages(1).build()
+                                val writer = HeifWriter.Builder(
+                                    tempHeifFile.absolutePath,
+                                    bitmap.width,
+                                    bitmap.height,
+                                    HeifWriter.INPUT_MODE_BITMAP
+                                ).setQuality(98).setMaxImages(1).build()
 
-                            writer.start()
-                            writer.addBitmap(bitmap)
-                            writer.stop(5000L)
-                            writer.close()
-                            bitmap.recycle()
-                            tempStillFile.delete()
+                                writer.start()
+                                writer.addBitmap(bitmap)
+                                writer.stop(5000L)
+                                writer.close()
+                                bitmap.recycle()
+                                tempStillFile.delete()
 
-                            val contentValues = ContentValues().apply {
-                                put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
-                                put(MediaStore.MediaColumns.MIME_TYPE, "image/heif")
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                    put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/OneShot")
+                                val contentValues = ContentValues().apply {
+                                    put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+                                    put(MediaStore.MediaColumns.MIME_TYPE, "image/heif")
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                        put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/OneShot")
+                                    }
+                                }
+
+                                val resolver = context.contentResolver
+                                val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                                    ?: error("创建 MediaStore HEIF 记录失败")
+
+                                resolver.openOutputStream(uri)?.use { out ->
+                                    tempHeifFile.inputStream().use { it.copyTo(out) }
+                                } ?: error("写入 HEIF 数据流失败")
+
+                                tempHeifFile.delete()
+
+                                mainExecutor.execute {
+                                    val remaining = inFlightStillCaptures.decrementAndGet()
+                                    galleryThumbnailManager.updateWithCapturedUri(uri, false, displayName)
+                                    _recordingStatus.value = _recordingStatus.value.copy(
+                                        isStillCapturing = remaining > 0,
+                                        savedUri = uri,
+                                        lastMediaType = CapturedMediaType.PHOTO,
+                                        userNotice = "HEIF 照片已保存至相册 (DCIM/OneShot)",
+                                        lastError = null,
+                                    )
+                                }
+                            }.onFailure { ex ->
+                                tempStillFile.delete()
+                                tempHeifFile.delete()
+                                mainExecutor.execute {
+                                    val remaining = inFlightStillCaptures.decrementAndGet()
+                                    _recordingStatus.value = _recordingStatus.value.copy(
+                                        isStillCapturing = remaining > 0,
+                                        lastError = "HEIF 编码失败: ${ex.message}",
+                                    )
                                 }
                             }
+                        }
 
-                            val resolver = context.contentResolver
-                            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-                                ?: error("创建 MediaStore HEIF 记录失败")
-
-                            resolver.openOutputStream(uri)?.use { out ->
-                                tempHeifFile.inputStream().use { it.copyTo(out) }
-                            } ?: error("写入 HEIF 数据流失败")
-
-                            tempHeifFile.delete()
-
-                            mainExecutor.execute {
-                                val remaining = inFlightStillCaptures.decrementAndGet()
-                                galleryThumbnailManager.updateWithCapturedUri(uri, false, displayName)
-                                _recordingStatus.value = _recordingStatus.value.copy(
-                                    isStillCapturing = remaining > 0,
-                                    savedUri = uri,
-                                    lastMediaType = CapturedMediaType.PHOTO,
-                                    userNotice = "HEIF 照片已保存至相册 (DCIM/OneShot)",
-                                    lastError = null,
-                                )
-                            }
-                        }.onFailure { ex ->
+                        override fun onError(exception: ImageCaptureException) {
                             tempStillFile.delete()
                             tempHeifFile.delete()
                             mainExecutor.execute {
                                 val remaining = inFlightStillCaptures.decrementAndGet()
                                 _recordingStatus.value = _recordingStatus.value.copy(
                                     isStillCapturing = remaining > 0,
-                                    lastError = "HEIF 编码失败: ${ex.message}",
+                                    lastError = "拍照失败: ${exception.message}",
                                 )
                             }
                         }
                     }
+                )
+            } else {
+                val displayName = "IMG_${stamp}.jpg"
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/OneShot")
+                    }
+                }
 
-                    override fun onError(exception: ImageCaptureException) {
-                        tempStillFile.delete()
-                        tempHeifFile.delete()
-                        mainExecutor.execute {
+                val outputOptions = ImageCapture.OutputFileOptions.Builder(
+                    context.contentResolver,
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    contentValues
+                ).build()
+
+                imageCapture.takePicture(
+                    outputOptions,
+                    mainExecutor,
+                    object : ImageCapture.OnImageSavedCallback {
+                        override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                            val remaining = inFlightStillCaptures.decrementAndGet()
+                            outputFileResults.savedUri?.let { uri ->
+                                galleryThumbnailManager.updateWithCapturedUri(uri, false, displayName)
+                            }
+                            val isUltraHdr = currentSettings.ultraHdrEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+                            val hdrTag = if (isUltraHdr) "Ultra HDR " else ""
+                            val notice = if (_recordingStatus.value.isRecording) {
+                                "录制中${hdrTag}拍照已保存至相册 (DCIM/OneShot)"
+                            } else {
+                                "${hdrTag}照片已保存至相册 (DCIM/OneShot)"
+                            }
+                            _recordingStatus.value = _recordingStatus.value.copy(
+                                isStillCapturing = remaining > 0,
+                                savedUri = outputFileResults.savedUri,
+                                lastMediaType = CapturedMediaType.PHOTO,
+                                userNotice = notice,
+                                lastError = null,
+                            )
+                        }
+
+                        override fun onError(exception: ImageCaptureException) {
                             val remaining = inFlightStillCaptures.decrementAndGet()
                             _recordingStatus.value = _recordingStatus.value.copy(
                                 isStillCapturing = remaining > 0,
@@ -694,58 +782,35 @@ class CameraController(
                             )
                         }
                     }
-                }
-            )
-        } else {
-            val displayName = "IMG_${stamp}.jpg"
-            val contentValues = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
-                put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/OneShot")
+                )
+            }
+        }
+
+        // SPEC-002: Pre-capture AF/AE convergence trigger before releasing shutter.
+        // On large f/1.67 sensors, confirming focus lock prevents capturing mid-scan out-of-focus blur.
+        if (currentSettings.isAutoFocus && boundCamera != null) {
+            val pointFactory = SurfaceOrientedMeteringPointFactory(1f, 1f)
+            val centerPoint = pointFactory.createPoint(0.5f, 0.5f)
+            val action = FocusMeteringAction.Builder(centerPoint, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
+                .setAutoCancelDuration(2, java.util.concurrent.TimeUnit.SECONDS)
+                .build()
+            val future = boundCamera?.cameraControl?.startFocusAndMetering(action)
+            var dispatched = false
+            val onComplete = {
+                if (!dispatched) {
+                    dispatched = true
+                    executeCapture()
                 }
             }
+            future?.addListener(onComplete, mainExecutor) ?: executeCapture()
 
-            val outputOptions = ImageCapture.OutputFileOptions.Builder(
-                context.contentResolver,
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                contentValues
-            ).build()
-
-            imageCapture.takePicture(
-                outputOptions,
-                mainExecutor,
-                object : ImageCapture.OnImageSavedCallback {
-                    override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                        val remaining = inFlightStillCaptures.decrementAndGet()
-                        outputFileResults.savedUri?.let { uri ->
-                            galleryThumbnailManager.updateWithCapturedUri(uri, false, displayName)
-                        }
-                        val isUltraHdr = currentSettings.ultraHdrEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
-                        val hdrTag = if (isUltraHdr) "Ultra HDR " else ""
-                        val notice = if (_recordingStatus.value.isRecording) {
-                            "录制中${hdrTag}拍照已保存至相册 (DCIM/OneShot)"
-                        } else {
-                            "${hdrTag}照片已保存至相册 (DCIM/OneShot)"
-                        }
-                        _recordingStatus.value = _recordingStatus.value.copy(
-                            isStillCapturing = remaining > 0,
-                            savedUri = outputFileResults.savedUri,
-                            lastMediaType = CapturedMediaType.PHOTO,
-                            userNotice = notice,
-                            lastError = null,
-                        )
-                    }
-
-                    override fun onError(exception: ImageCaptureException) {
-                        val remaining = inFlightStillCaptures.decrementAndGet()
-                        _recordingStatus.value = _recordingStatus.value.copy(
-                            isStillCapturing = remaining > 0,
-                            lastError = "拍照失败: ${exception.message}",
-                        )
-                    }
-                }
-            )
+            // Fallback guard: guarantee shutter fires within 300ms even if 3A scan is prolonged
+            scope.launch {
+                delay(300)
+                mainExecutor.execute { onComplete() }
+            }
+        } else {
+            executeCapture()
         }
     }
 
@@ -758,11 +823,10 @@ class CameraController(
         val videoCapture = activeVideoCapture ?: return
         if (_recordingStatus.value.isStillCapturing || _recordingStatus.value.isMotionCapturing) return
 
-        // If recording is already active, take a still snapshot seamlessly instead of blocking
+        // SPEC-002: Mutual exclusion — reject motion photo request while long-form video recording is active
         if (_recordingStatus.value.isRecording) {
-            takeStillPhoto()
             _recordingStatus.value = _recordingStatus.value.copy(
-                userNotice = "录制中动态截帧抓拍已保存至相册 (DCIM/OneShot)"
+                userNotice = "录像进行中，无法同时拍摄动态照片，请先停止录像"
             )
             return
         }
