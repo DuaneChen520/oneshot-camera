@@ -257,6 +257,25 @@ class CameraController(
                 imageCaptureBuilder.setOutputFormat(targetFormat)
             }
         }
+
+        // Inject hardware ISP high-quality parameters exclusively into the still capture pipeline.
+        // These must NOT be set session-wide (which would burden the video encoder).
+        // This ensures the single-shot capture request demands full edge sharpening,
+        // advanced denoising, chromatic aberration correction, and max JPEG quality.
+        val stillParams = StillCaptureParams.build(effectiveSettings)
+        Camera2Interop.Extender(imageCaptureBuilder).apply {
+            setCaptureRequestOption(CaptureRequest.EDGE_MODE,
+                stillParams[StillCaptureParams.KEY_EDGE_MODE] as Int)
+            setCaptureRequestOption(CaptureRequest.NOISE_REDUCTION_MODE,
+                stillParams[StillCaptureParams.KEY_NOISE_REDUCTION_MODE] as Int)
+            setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_ABERRATION_MODE,
+                stillParams[StillCaptureParams.KEY_COLOR_CORRECTION_ABERRATION_MODE] as Int)
+            setCaptureRequestOption(CaptureRequest.SHADING_MODE,
+                stillParams[StillCaptureParams.KEY_SHADING_MODE] as Int)
+            setCaptureRequestOption(CaptureRequest.JPEG_QUALITY,
+                stillParams[StillCaptureParams.KEY_JPEG_QUALITY] as Byte)
+        }
+
         val imageCapture = imageCaptureBuilder.build()
         activeImageCapture = imageCapture
 
@@ -296,25 +315,23 @@ class CameraController(
             }
         }
 
-        // Configure VideoCapture stabilization & DCG HDR session parameter via Camera2Interop
+        // Configure VideoCapture FPS lock, stabilization & DCG HDR session parameter via Camera2Interop.
+        // FPS range lock is applied EXCLUSIVELY to the video pipeline, never to the shared session,
+        // ensuring the still capture AE engine remains free to select high-speed shutter speeds.
+        val videoParams = VideoCaptureParams.build(effectiveSettings)
         Camera2Interop.Extender(videoCaptureBuilder).apply {
             runCatching {
                 setCaptureRequestOption(DcgHdrConfig.VENDOR_KEY, targetDcgValue)
             }
-            when (effectiveSettings.videoStabilization) {
-                VideoStabilizationMode.STANDARD -> {
-                    setCaptureRequestOption(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF)
-                    setCaptureRequestOption(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE, CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON)
-                }
-                VideoStabilizationMode.ENHANCED -> {
-                    setCaptureRequestOption(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON)
-                    setCaptureRequestOption(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE, CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON)
-                }
-                VideoStabilizationMode.OFF -> {
-                    setCaptureRequestOption(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF)
-                    setCaptureRequestOption(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE, CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_OFF)
-                }
-            }
+            // FPS lock — exclusively for video encoder stability
+            val fpsRange = videoParams[VideoCaptureParams.KEY_AE_TARGET_FPS_RANGE] as FpsRange
+            setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
+                Range(fpsRange.lower, fpsRange.upper))
+            // Video stabilization
+            setCaptureRequestOption(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+                videoParams[VideoCaptureParams.KEY_VIDEO_STABILIZATION_MODE] as Int)
+            setCaptureRequestOption(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
+                videoParams[VideoCaptureParams.KEY_LENS_OIS_MODE] as Int)
         }
 
         val videoCapture = videoCaptureBuilder.build()
@@ -473,14 +490,13 @@ class CameraController(
 
         val optionsBuilder = CaptureRequestOptions.Builder()
 
-        // 3. Target Frame Rate
-        val targetFps = settings.fpsPreset.targetFps
-        optionsBuilder.setCaptureRequestOption(
-            CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
-            Range(targetFps, targetFps)
-        )
+        // NOTE: CONTROL_AE_TARGET_FPS_RANGE is intentionally NOT set here.
+        // It is injected exclusively into the VideoCapture builder via Camera2Interop.Extender
+        // in rebindCamera(). Setting it here via Camera2CameraControl would apply it session-wide,
+        // contaminating the still capture AE engine and capping shutter speed at 1/30s — the root
+        // cause of the motion blur bug (SPEC-002).
 
-        // 4. White Balance & CCT
+        // 3. White Balance & CCT
         if (settings.isAutoWb) {
             optionsBuilder.setCaptureRequestOption(
                 CaptureRequest.CONTROL_AWB_MODE,
@@ -546,41 +562,11 @@ class CameraController(
             )
         }
 
-        // 7. Video Stabilization Mode (OIS & EIS)
-        when (settings.videoStabilization) {
-            VideoStabilizationMode.STANDARD -> {
-                optionsBuilder.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
-                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF
-                )
-                optionsBuilder.setCaptureRequestOption(
-                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
-                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON
-                )
-            }
-            VideoStabilizationMode.ENHANCED -> {
-                optionsBuilder.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
-                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON
-                )
-                optionsBuilder.setCaptureRequestOption(
-                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
-                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON
-                )
-            }
-            VideoStabilizationMode.OFF -> {
-                optionsBuilder.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
-                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF
-                )
-                optionsBuilder.setCaptureRequestOption(
-                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
-                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_OFF
-                )
-            }
-        }
+        // NOTE: Video stabilization (OIS & EIS) is intentionally NOT set here.
+        // It is injected exclusively into the VideoCapture builder via Camera2Interop.Extender
+        // in rebindCamera(), as part of the pipeline isolation architecture (SPEC-002).
 
-        // 8. Hardware Image Quality & Clarity Tuning
+        // 7. Hardware Image Quality & Clarity Tuning (for preview/viewfinder repeating request)
         optionsBuilder.setCaptureRequestOption(
             CaptureRequest.EDGE_MODE,
             CaptureRequest.EDGE_MODE_HIGH_QUALITY
@@ -594,7 +580,7 @@ class CameraController(
             CaptureRequest.COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY
         )
 
-        // 9. Qualcomm DCG Dual Gain Hardware Session & Request Options
+        // 8. Qualcomm DCG Dual Gain Hardware Session & Request Options
         val targetDcgValue = DcgHdrConfig.resolveDcgValue(settings.dcgHdrEnabled, _capabilities.value.isDcgSupported)
         runCatching {
             optionsBuilder.setCaptureRequestOption(DcgHdrConfig.VENDOR_KEY, targetDcgValue)
