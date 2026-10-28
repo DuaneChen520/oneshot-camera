@@ -7,6 +7,10 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
+import android.view.OrientationEventListener
+import android.view.Surface
 import androidx.heifwriter.HeifWriter
 import android.graphics.PointF
 import android.hardware.camera2.CaptureRequest
@@ -98,6 +102,37 @@ class CameraController(
     private var glProcessor: OneshotGlProcessor? = null
     private var activeCameraEffect: OneshotCameraEffect? = null
 
+    // Device physical orientation tracking (essential when Activity is portrait-locked)
+    private var currentSurfaceRotation: Int = Surface.ROTATION_0
+    private var currentOrientationDegrees: Int = 0
+
+    private val orientationEventListener by lazy {
+        object : OrientationEventListener(context) {
+            override fun onOrientationChanged(orientation: Int) {
+                if (orientation == ORIENTATION_UNKNOWN) return
+                val rotation = when (orientation) {
+                    in 45..134 -> Surface.ROTATION_270
+                    in 135..224 -> Surface.ROTATION_180
+                    in 225..314 -> Surface.ROTATION_90
+                    else -> Surface.ROTATION_0
+                }
+                val degrees = when (rotation) {
+                    Surface.ROTATION_0 -> 0
+                    Surface.ROTATION_90 -> 90
+                    Surface.ROTATION_180 -> 180
+                    Surface.ROTATION_270 -> 270
+                    else -> 0
+                }
+                if (currentSurfaceRotation != rotation) {
+                    currentSurfaceRotation = rotation
+                    currentOrientationDegrees = degrees
+                    activeImageCapture?.targetRotation = rotation
+                    activeVideoCapture?.targetRotation = rotation
+                }
+            }
+        }
+    }
+
     // State flows for UI
     private val _zoomRange = MutableStateFlow(0.6f..10.0f)
     val zoomRange: StateFlow<ClosedFloatingPointRange<Float>> = _zoomRange.asStateFlow()
@@ -168,6 +203,10 @@ class CameraController(
         activeLifecycleOwner = lifecycleOwner
         activeSurfaceProvider = surfaceProvider
         val currentSettings = parameterStore.settings.value
+
+        if (orientationEventListener.canDetectOrientation()) {
+            orientationEventListener.enable()
+        }
 
         if (cameraProvider != null) {
             rebindCamera(lifecycleOwner, surfaceProvider, currentSettings)
@@ -248,6 +287,7 @@ class CameraController(
         val imageCaptureBuilder = ImageCapture.Builder()
             .setResolutionSelector(resolutionSelector)
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+            .setTargetRotation(currentSurfaceRotation)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val targetFormat = if (effectiveSettings.ultraHdrEnabled) {
@@ -305,6 +345,7 @@ class CameraController(
 
         val videoCaptureBuilder = VideoCapture.Builder(recorderBuilder.build())
             .setDynamicRange(dynamicRange)
+            .setTargetRotation(currentSurfaceRotation)
 
         if (effectiveSettings.quality == QualityPreset.OPENGATE_MAX) {
             runCatching {
@@ -661,26 +702,46 @@ class CameraController(
                     object : ImageCapture.OnImageSavedCallback {
                         override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                             runCatching {
-                                val bitmap = BitmapFactory.decodeFile(tempStillFile.absolutePath)
+                                val decoded = BitmapFactory.decodeFile(tempStillFile.absolutePath)
                                     ?: error("解码拍照帧失败")
+
+                                val rotationDegrees = runCatching {
+                                    val exif = ExifInterface(tempStillFile.absolutePath)
+                                    when (exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+                                        ExifInterface.ORIENTATION_ROTATE_90 -> 90
+                                        ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                                        ExifInterface.ORIENTATION_ROTATE_270 -> 270
+                                        else -> 0
+                                    }
+                                }.getOrDefault(0)
+
+                                val finalBitmap = if (rotationDegrees != 0) {
+                                    val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+                                    val rotated = Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
+                                    decoded.recycle()
+                                    rotated
+                                } else {
+                                    decoded
+                                }
 
                                 val writer = HeifWriter.Builder(
                                     tempHeifFile.absolutePath,
-                                    bitmap.width,
-                                    bitmap.height,
+                                    finalBitmap.width,
+                                    finalBitmap.height,
                                     HeifWriter.INPUT_MODE_BITMAP
                                 ).setQuality(98).setMaxImages(1).build()
 
                                 writer.start()
-                                writer.addBitmap(bitmap)
+                                writer.addBitmap(finalBitmap)
                                 writer.stop(5000L)
                                 writer.close()
-                                bitmap.recycle()
+                                finalBitmap.recycle()
                                 tempStillFile.delete()
 
                                 val contentValues = ContentValues().apply {
                                     put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
                                     put(MediaStore.MediaColumns.MIME_TYPE, "image/heif")
+                                    put(MediaStore.Images.Media.ORIENTATION, 0)
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                                         put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/OneShot")
                                     }
@@ -738,6 +799,7 @@ class CameraController(
                 val contentValues = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
                     put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                    put(MediaStore.Images.Media.ORIENTATION, currentOrientationDegrees)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/OneShot")
                     }
@@ -1032,6 +1094,7 @@ class CameraController(
     }
 
     fun unbind() {
+        runCatching { orientationEventListener.disable() }
         stopRecording()
         RecordingForegroundService.stop(context)
         glProcessor?.release()
